@@ -20,13 +20,20 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_
 X_train = X_train / 255.0
 X_test = X_test / 255.0
 
+train_size = 1000  # Set the number of samples you want in your smaller training set
+X_train_small = X_train[:train_size]
+y_train_small = y_train[:train_size]
+
 def euclidean_distance(a, b):
     return np.sqrt(np.sum((a - b) ** 2))
 
 def knn_predict(X_train, y_train, X_test, k=3):
     y_pred = []
+    node_counter = 0
     
     for idx, test_point in enumerate(X_test.values):
+        print(node_counter)
+        node_counter = node_counter + 1
         # Compute distances from test_point to all training points
         distances = [euclidean_distance(test_point, x_train) for x_train in X_train.values]
         
@@ -42,7 +49,7 @@ def knn_predict(X_train, y_train, X_test, k=3):
 
 # Predict the labels for the test set
 k = 3
-y_pred = knn_predict(X_train, y_train, X_test, k)
+y_pred = knn_predict(X_train_small, y_train_small, X_test, k)
 
 # Calculate accuracy
 accuracy = accuracy_score(y_test, y_pred)
