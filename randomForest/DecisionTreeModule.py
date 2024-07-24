@@ -2,8 +2,9 @@ import numpy as np
 from collections import Counter
 
 class DecisionTree:
-  def __init__(self, max_depth = None):
+  def __init__(self, max_depth = None, max_features=None):
     self.max_depth = max_depth
+    self.max_features = max_features
   
   # X is the data, y is the labels
   # Fits the tree to the data
@@ -32,7 +33,9 @@ class DecisionTree:
     best_gini = 1.0 - sum((num/samples) ** 2 for num in num_parent)
     best_idx, best_thr = None, None
 
-    for idx in range(features):
+    feature_indices = np.random.choice(features, self.max_features, replace=False) if self.max_features else range(features)
+
+    for idx in feature_indices:
       # Sort the samples by the current feature values. Thresholds are the sorted feature values, and classes are the corresponding class labels.
       thresholds, classes = zip(*sorted(zip(X[:, idx] , y)))
 
@@ -58,7 +61,7 @@ class DecisionTree:
           best_idx = idx
           best_thr = (thresholds[i] + thresholds[i - 1]) / 2
 
-      return best_idx, best_thr
+    return best_idx, best_thr
 
   # Recursively builds the decision tree
   def _grow_tree(self, X, y, depth=0):
