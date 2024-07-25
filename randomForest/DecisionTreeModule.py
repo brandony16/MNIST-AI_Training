@@ -1,5 +1,57 @@
 import numpy as np
 from collections import Counter
+from numba import njit
+
+@njit
+def best_split(X, y, n_classes, max_features):
+  samples, features = X.shape
+  if samples <= 1:
+      return None, None
+
+  # List of counts of each class in the current node
+  num_parent = np.bincount(y, minlength=n_classes)
+  # Calculate the gini impurity for the current node
+  best_gini = 1.0 - np.sum((num_parent / samples) ** 2)
+  best_idx, best_thr = None, None
+
+  # Randomly choose a subset of features if max_features is specified
+  feature_indices = np.random.choice(features, max_features, replace=False) if max_features else np.arange(features)
+
+  for idx in feature_indices:
+      # Sort the samples by the current feature values.
+      sorted_indices = np.argsort(X[:, idx])
+      X_sorted, y_sorted = X[sorted_indices, idx], y[sorted_indices]
+
+      # Initialize class counts
+      num_left = np.zeros(n_classes)
+      num_right = num_parent.copy()
+
+      # Calculate cumulative sums for class counts
+      for i in range(1, samples):
+          c = y_sorted[i - 1]
+          num_left[c] += 1
+          num_right[c] -= 1
+
+          # Skip repeating thresholds
+          if X_sorted[i] == X_sorted[i - 1]:
+              continue
+
+          # Calculate Gini impurities using cumulative sums
+          left_size = i
+          right_size = samples - i
+
+          gini_left = 1.0 - np.sum((num_left[:left_size] / left_size) ** 2)
+          gini_right = 1.0 - np.sum((num_right[:right_size] / right_size) ** 2)
+          gini = (left_size * gini_left + right_size * gini_right) / samples
+
+          # Update best gini and split point if current split is better
+          if gini < best_gini:
+              best_gini = gini
+              best_idx = idx
+              best_thr = (X_sorted[i] + X_sorted[i - 1]) / 2
+
+  return best_idx, best_thr
+   
 
 class DecisionTree:
   def __init__(self, max_depth = None, max_features=None):
@@ -21,47 +73,9 @@ class DecisionTree:
     # Calls predict for each input and returns predicted labels
     return[self._predict(inputs) for inputs in X]
   
-  # This method finds the best feature and threshold to split the data to minimize the Gini impurity.  
   def _best_split(self, X, y):
-    samples, features = X.shape
-    if samples <= 1:
-      return None, None
-
-    # List of counts of each class in the current node
-    num_parent = [np.sum(y == c) for c in range(self.n_classes_)]
-    # Calculates the gini impurity for the current node
-    best_gini = 1.0 - sum((num/samples) ** 2 for num in num_parent)
-    best_idx, best_thr = None, None
-
-    feature_indices = np.random.choice(features, self.max_features, replace=False) if self.max_features else range(features)
-
-    for idx in feature_indices:
-      # Sort the samples by the current feature values. Thresholds are the sorted feature values, and classes are the corresponding class labels.
-      thresholds, classes = zip(*sorted(zip(X[:, idx] , y)))
-
-      num_left = [0] * self.n_classes_
-      num_right = num_parent.copy()
-
-      # Loop over possible split points and update class counts
-      for i in range(1, samples):
-        c = classes[i - 1]
-        num_left[c] += 1
-        num_right[c] -= 1
-
-        # Calculate gini for both sides of split then calculate weighted impurity
-        gini_left = 1.0 - sum((num_left[x] / i) ** 2 for x in range(self.n_classes_))
-        gini_right = 1.0 - sum((num_right[x] / (samples - i)) ** 2 for x in range(self.n_classes_))
-        gini = (i * gini_left + (samples - i) * gini_right) / samples
-
-        # Skip repeating thresholds
-        if thresholds[i] == thresholds[i - 1]:
-          continue
-        if gini < best_gini:
-          best_gini = gini
-          best_idx = idx
-          best_thr = (thresholds[i] + thresholds[i - 1]) / 2
-
-    return best_idx, best_thr
+    # Find the best split using the optimized best_split function
+    return best_split(X, y, self.n_classes_, self.max_features)
 
   # Recursively builds the decision tree
   def _grow_tree(self, X, y, depth=0):

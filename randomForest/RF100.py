@@ -22,7 +22,7 @@ y_train = label_encoder.fit_transform(y_train)
 y_test = label_encoder.transform(y_test)
 
 # Step 5: Initialize and train the RandomForestClassifier
-forest = RandomForest(n_trees=100, max_depth=5, n_jobs=-1, max_features=28)
+forest = RandomForest(n_trees=100, max_depth=10, n_jobs=-1, max_features=28)
 forest.fit(X_train, y_train)
 
 # Step 6: Make predictions and evaluate the model
