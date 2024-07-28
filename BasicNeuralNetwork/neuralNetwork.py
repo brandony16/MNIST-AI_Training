@@ -2,10 +2,10 @@ import numpy as np
 from layerClass import Layer
 
 class NeuralNetwork:
-  def __init__(self, layer_sizes):
+  def __init__(self, layer_sizes, activation='relu'):
     self.layers = []
     for i in range(len(layer_sizes) - 1):
-      activation = 'relu' if i < len(layer_sizes) - 2 else 'softmax'
+      activation = activation if i < len(layer_sizes) - 2 else 'softmax'
       self.layers.append(Layer(layer_sizes[i], layer_sizes[i + 1], activation))
   
   def forward(self, X):

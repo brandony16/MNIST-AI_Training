@@ -24,11 +24,11 @@ if __name__ == "__main__":
   train_images, train_labels, test_images, test_labels = load_mnist_data()
   
   # Define the neural network architecture
-  layer_sizes = [784, 100,10]  # Example: 784 input neurons 28x28 image, 2 hidden layers with 128 and 64 neurons, and 1 output for each class
+  layer_sizes = [784,100, 10] 
   
 
-  nn = NeuralNetwork(layer_sizes)
-  nn.train(train_images, train_labels, 10, 0.1, 64)
+  nn = NeuralNetwork(layer_sizes, 'sigmoid')
+  nn.train(train_images, train_labels, 10, 0.01, 32)
 
   print("Evaluating on test data:")
   test_output = nn.forward(test_images)
