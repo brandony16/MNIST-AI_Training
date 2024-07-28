@@ -24,10 +24,11 @@ if __name__ == "__main__":
   train_images, train_labels, test_images, test_labels = load_mnist_data()
   
   # Define the neural network architecture
-  layer_sizes = [784,100, 10] 
+  layer_sizes = [784,512, 128, 10] 
   
-
-  nn = NeuralNetwork(layer_sizes, 'sigmoid')
+  # relu and sigmoid activation functions available
+  # reLU: Best accuracy: 97.45% Layers: 784, 512, 128, 10 Epochs: 10 Learning Rate: 0.01 Mini-batch Size: 32
+  nn = NeuralNetwork(layer_sizes, 'relu')
   nn.train(train_images, train_labels, 10, 0.01, 32)
 
   print("Evaluating on test data:")
