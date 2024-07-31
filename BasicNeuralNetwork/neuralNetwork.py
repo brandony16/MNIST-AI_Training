@@ -1,5 +1,5 @@
 import numpy as np
-from layerClass import Layer
+from BasicNeuralNetwork.layerClass import Layer
 
 class NeuralNetwork:
   def __init__(self, layer_sizes, activation='relu'):
@@ -18,7 +18,7 @@ class NeuralNetwork:
     for layer in reversed(self.layers):
       error = layer.backward(error, learningRate)
 
-  def train(self, data, labels, epochs=10000, learningRate=0.1, batch_size=32):
+  def train(self, data, labels, epochs=10, learningRate=0.1, batch_size=32):
     num_samples = data.shape[0]
     for epoch in range(epochs):
       # Shuffle the data at the beginning of each epoch
@@ -26,6 +26,7 @@ class NeuralNetwork:
       np.random.shuffle(indices)
       data = data[indices]
       labels = labels[indices]
+      print("Epoch Started")
 
       # Process the data in batches
       for start_idx in range(0, num_samples, batch_size):
@@ -37,7 +38,7 @@ class NeuralNetwork:
           output = self.forward(batch_data)
           self.backward(batch_data, batch_labels, output, learningRate)
 
-      if epoch % np.floor(epochs/10) == 0:
+      if epoch % epochs//10 == 0:
         print(f"Epoch {epoch} of {epochs} completed")
         print(f"Loss: {self.cross_entropy(labels, self.forward(data))}")
 

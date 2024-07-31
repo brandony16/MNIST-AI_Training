@@ -1,35 +1,19 @@
 import numpy as np
 from sklearn.metrics import confusion_matrix, precision_score, recall_score, f1_score
-from neuralNetwork import NeuralNetwork
-
-# Load the MNIST data from the npz file
-def load_mnist_data(npz_file='mnist.npz'):
-    data = np.load(npz_file)
-    train_images = data['train_images']
-    train_labels = data['train_labels']
-    test_images = data['test_images']
-    test_labels = data['test_labels']
-
-    # Normalize the images
-    train_images = train_images.reshape((60000, 28 * 28)).astype('float32') / 255
-    test_images = test_images.reshape((10000, 28 * 28)).astype('float32') / 255
-    
-    # One-hot encode the labels
-    train_labels = np.eye(10)[train_labels]
-    test_labels = np.eye(10)[test_labels]
-    
-    return train_images, train_labels, test_images, test_labels
+from BasicNeuralNetwork.neuralNetwork import NeuralNetwork
+from loadMNIST import load_and_preprocess_mnist
 
 if __name__ == "__main__":
-  train_images, train_labels, test_images, test_labels = load_mnist_data()
-  
+  print("Starting Program")
+  train_images, train_labels, test_images, test_labels = load_and_preprocess_mnist()
   # Define the neural network architecture
-  layer_sizes = [784,512, 128, 10] 
-  
+  layer_sizes = [784, 248, 10] 
+
   # relu and sigmoid activation functions available
   # reLU: Best accuracy: 97.45% Layers: 784, 512, 128, 10 Epochs: 10 Learning Rate: 0.01 Mini-batch Size: 32
   nn = NeuralNetwork(layer_sizes, 'relu')
-  nn.train(train_images, train_labels, 10, 0.01, 32)
+  print("Beginning Training")
+  nn.train(train_images, train_labels, 10, 0.1, 32)
 
   print("Evaluating on test data:")
   test_output = nn.forward(test_images)
