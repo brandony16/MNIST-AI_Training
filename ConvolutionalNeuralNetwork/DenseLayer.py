@@ -17,7 +17,7 @@ class Dense:
     self.time_step = 0 # Used to calculate gradient gt at current time step t
 
   
-  def forward(self, inputs):
+  def forwardPass(self, inputs):
     self.inputs = inputs
     self.linear_output = np.dot(inputs, self.weights) + self.bias
     if self.activation == 'relu':
@@ -28,7 +28,7 @@ class Dense:
       self.output = self.softmax(self.linear_output)    
     return self.output
   
-  def backward(self, error, learningRate=0.001, beta1=0.9, beta2=0.999, epsilon=1e-8):
+  def backprop(self, error, learningRate=0.001, beta1=0.9, beta2=0.999, epsilon=1e-8):
     # The gradient of the loss with respect to the pre-activation input of the current layer.
     if self.activation == 'relu':
       delta = error * self.reLU_deriv(self.output)

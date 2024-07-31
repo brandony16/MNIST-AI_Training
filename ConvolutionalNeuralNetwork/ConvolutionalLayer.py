@@ -26,4 +26,13 @@ class ConvLayer:
     
     return output
   
-  # def backwardPass(self, )
+  def backprop(self, dL_dOutput, learnRate):
+    # dL_dOutput is the gradient of the loss with respect to the output of this layer.
+    dL_dFilters = np.zeros(self.filters.shape)
+
+    for region, i, j in self.iterateRegions(self.lastInput):
+      for f in range(self.numFilters):
+        dL_dFilters[f] = dL_dOutput[i, j, f] * region
+
+    self.filters -= learnRate * dL_dFilters
+    return dL_dFilters

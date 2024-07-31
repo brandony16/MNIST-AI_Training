@@ -20,3 +20,19 @@ class Pooling:
     for region, i, j in self.iterateRegions(input):
       # Find max value in each filter
       output[i,j] = np.amax(region, axis=(0,1))
+      
+    return output
+
+  def backprop(self, dL_dOutput, learnRate):
+    dL_dInput = np.zeros(self.lastInput.shape)
+
+    for region, i, j in self.iterateRegions(self.lastInput):
+      h, w, f = region.shape
+      amax = np.amax(region, axis=(0,1))
+
+      for i2 in range(h):
+        for j2 in range(w):
+          for k2 in range(f):
+            if region[i2, j2, k2] == amax(k2):
+              dL_dInput[i * 2 + i2, j * 2 + j2, k2] = dL_dOutput[i, j, k2]
+    return dL_dInput
