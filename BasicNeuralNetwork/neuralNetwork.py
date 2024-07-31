@@ -40,7 +40,7 @@ class NeuralNetwork:
 
       if epoch % epochs//10 == 0:
         print(f"Epoch {epoch} of {epochs} completed")
-        print(f"Loss: {self.cross_entropy(labels, self.forward(data))}")
+        print(f"Training Loss: {self.cross_entropy(labels, self.forward(data))}")
 
   # Loss calculation
   def cross_entropy(self, y, output):

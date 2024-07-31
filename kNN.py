@@ -32,7 +32,6 @@ def knn_predict(X_train, y_train, X_test, k=3):
     node_counter = 0
     
     for idx, test_point in enumerate(X_test.values):
-        print(node_counter)
         node_counter = node_counter + 1
         # Compute distances from test_point to all training points
         distances = [euclidean_distance(test_point, x_train) for x_train in X_train.values]

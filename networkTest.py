@@ -13,7 +13,7 @@ if __name__ == "__main__":
   # reLU: Best accuracy: 97.45% Layers: 784, 512, 128, 10 Epochs: 10 Learning Rate: 0.01 Mini-batch Size: 32
   nn = NeuralNetwork(layer_sizes, 'relu')
   print("Beginning Training")
-  nn.train(train_images, train_labels, 10, 0.1, 32)
+  nn.train(train_images, train_labels, 10, 0.01, 32)
 
   print("Evaluating on test data:")
   test_output = nn.forward(test_images)
