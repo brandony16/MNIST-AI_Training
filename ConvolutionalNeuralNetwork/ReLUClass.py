@@ -1,11 +1,15 @@
 import numpy as np
 
 class ReLU:
+    def __init__(self):
+        self.input = None
+        
     def forwardPass(self, input):
-        self.last_input = input
+        self.input = input
         return np.maximum(0, input)
     
-    def backprop(self, dL_dOutput, learnRate):
-        dL_dInput = dL_dOutput * (self.last_input > 0)
+    def backprop(self, d_output):
+        d_input = d_output.copy()
+        d_input[self.input <= 0] = 0
 
-        return dL_dInput
+        return d_input

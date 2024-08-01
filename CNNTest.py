@@ -18,7 +18,7 @@ testImages = testImages.reshape(-1, 28, 28)
 print('Data loaded')
 
 architecture = [
-    ConvLayer(numFilters=6, filterSize=5),
+    ConvLayer(num_filters=6, filter_size=5),
     ReLU(),
     # Pooling(),
     # ConvLayer(numFilters=16, filterSize=5),
@@ -26,8 +26,8 @@ architecture = [
     # Pooling(),
     # ConvLayer(numFilters=120, filterSize=5),
     # ReLU(),
-    Dense(inputSize=6, outputSize=15, activation='relu'),
-    Dense(inputSize=15, outputSize=10, activation='softmax')
+    Dense(input_size=6, output_size=15, activation='relu'),
+    Dense(input_size=15, output_size=10, activation='softmax')
 ]
 
 cnn = CNN(layers=architecture)

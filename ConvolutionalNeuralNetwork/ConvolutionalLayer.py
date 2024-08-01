@@ -38,7 +38,7 @@ class ConvLayer:
 
     return output
   
-  def forward(self, input):
+  def forwardPass(self, input):
     self.input = self._pad_input(input)
     self.output = np.zeros((self.num_filters, 
                         (self.input.shape[0] - self.filter_size) // self.stride + 1, # Height of output feature map
@@ -48,36 +48,77 @@ class ConvLayer:
 
     return self.output
 
-input = np.array([
-    [1, 2, 3, 0],
-    [4, 5, 6, 1],
-    [7, 8, 9, 2],
-    [3, 2, 1, 0]
-])
+  def backprop(self, d_output, learning_rate):
+    # Update filters
+    d_filters = np.zeros_like(self.filters, dtype=np.float64)
+    input_padded = self._pad_input(self.input)
 
-filter = np.array([
-    [1, 0],
-    [0, -1]
-])
+    for f in range(self.num_filters):
+      for i in range(d_filters.shape[1]):
+        for j in range(d_filters.shape[2]):
+          region = input_padded[i:i+d_output.shape[1]*self.stride:self.stride, 
+                                  j:j+d_output.shape[2]*self.stride:self.stride]
+          d_filters[f, i, j] = np.sum(region * d_output[f])
+    self.filters -= learning_rate * d_filters
 
-filters = [
-    np.array([
-        [1, 0],
-        [0, -1]
-    ]),
-    np.array([
-        [0, 1],
-        [-1, 0]
-    ])
-]
+    # Calculate Gradient
+    d_input = np.zeros_like(self.input, dtype=np.float64)
+
+    for f in range(self.num_filters):
+      for i in range(d_output.shape[1]):
+        for j in range(d_output.shape[2]):
+          h_start = i * self.stride
+          h_end = h_start + self.filter_size
+          w_start = j * self.stride
+          w_end = w_start + self.filter_size
+          d_input[h_start:h_end, w_start:w_end] += self.filters[f] * d_output[f,i,j]
+
+    # Remove and padding
+    if self.padding == 'same':
+      pad_height = (self.input.shape[0] - self.filters.shape[1]) // 2
+      pad_width = (self.input.shape[1] - self.filters.shape[2]) // 2
+      d_input = d_input[pad_height:-pad_height, pad_width:-pad_width]
+    
+    return d_input
+
+# input = np.array([
+#     [1, 2, 3, 0],
+#     [4, 5, 6, 1],
+#     [7, 8, 9, 2],
+#     [3, 2, 1, 0]
+# ])
+
+# filter = np.array([
+#     [1, 0],
+#     [0, -1]
+# ])
+
+# d_output = np.array([
+#     [
+#         [0.1, 0.2, 0.3],
+#         [0.4, 0.5, 0.6],
+#         [0.7, 0.8, 0.9]
+#     ],
+#     [
+#         [0.9, 0.8, 0.7],
+#         [0.6, 0.5, 0.4],
+#         [0.3, 0.2, 0.1]
+#     ]
+# ])
 
 
-testLayer = ConvLayer(num_filters=5, filter_size=2)
+# testLayer = ConvLayer(num_filters=2, filter_size=2)
 
-convolvedMatrix = testLayer._convolve(input, filter)
-forwardOutput = testLayer.forward(input)
+# convolvedMatrix = testLayer._convolve(input, filter)
+# forwardOutput = testLayer.forwardPass(input)
+# backpropOutput = testLayer.backprop(d_output=d_output, learning_rate=1)
+# newForward = testLayer.forwardPass(input)
 
-print("Convolved Matrix:")
-print(convolvedMatrix)
-print("Forward Output:")
-print(forwardOutput)
+# print("Convolved Matrix:")
+# print(convolvedMatrix)
+# print("Forward Output:")
+# print(forwardOutput)
+# print("Backpropogation:")
+# print(backpropOutput)
+# print("New Forward Pass")
+# print(newForward)

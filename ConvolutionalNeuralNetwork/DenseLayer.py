@@ -1,82 +1,82 @@
 import numpy as np
+from ConvolutionalNeuralNetwork.Flatten import flatten
 
 class Dense:
-  def __init__(self, inputSize, outputSize, activation='relu'):
-    np.random.seed(42)
-    # Initializes a matrix of dimensons inputSize x outputSize of weights
-    self.weights = np.random.randn(inputSize, outputSize) * np.sqrt(2. / inputSize)
-    # Inititalizes an array of biases for each 'neuron'
-    self.bias = np.zeros(outputSize)
+  def __init__(self, input_size, output_size, learning_rate=0.01, activation='relu'):
+    self.input_size = input_size
+    self.output_size = output_size
+    self.learning_rate = learning_rate
     self.activation = activation
-
-    # Adam Optimization Vars
-    self.m_weights = np.zeros_like(self.weights) # First moment vector m. Moving average of past gradients
-    self.v_weights = np.zeros_like(self.weights) # Second moment vecter v. Moving average of the squared gradients
-    self.m_biases = np.zeros_like(self.bias)
-    self.v_biases = np.zeros_like(self.bias)
-    self.time_step = 0 # Used to calculate gradient gt at current time step t
-
+    self.weights = np.random.randn(input_size, output_size) * 0.01
+    self.biases = np.zeros((1, output_size))
+    self.input = None
+    self.output = None
+    self.activated_output = None
   
-  def forwardPass(self, inputs):
-    self.inputs = inputs
-    self.linear_output = np.dot(inputs, self.weights) + self.bias
-    if self.activation == 'relu':
-      self.output = self.reLU(self.linear_output)
-    elif self.activation == 'sigmoid':
-      self.output = self.sigmoid(self.linear_output)
+  def forwardPass(self, input):
+    self.input = input
+    self.output = np.dot(self.input, self.weights) + self.biases
+    self.activated_output = self._apply_activation(self.output)
+
+    return self.activated_output
+  
+  def backprop(self, d_output):
+    if self.activation in ['relu', 'sigmoid', 'tanh']:
+      d_output = self._apply_activation_derivative(d_output)
     elif self.activation == 'softmax':
-      self.output = self.softmax(self.linear_output)    
-    return self.output
-  
-  def backprop(self, error, learningRate=0.001, beta1=0.9, beta2=0.999, epsilon=1e-8):
-    # The gradient of the loss with respect to the pre-activation input of the current layer.
+      d_output = self._apply_softmax_derivative(d_output)
+    
+    d_input = np.dot(d_output, self.weights.T)
+    d_weights = np.dot(self.input.T, d_output)
+    d_biases = np.sum(d_output, axis=0, keepdims=True)
+
+    self.weights -= self.learning_rate * d_weights
+    self.biases -= self.learning_rate * d_biases
+
+    return d_input
+
+  def _apply_activation(self, x):
     if self.activation == 'relu':
-      delta = error * self.reLU_deriv(self.output)
+      return np.maximum(0, x)
     elif self.activation == 'sigmoid':
-      delta = error * self.sigmoid_derivative(self.output)
+      return 1 / (1 + np.exp(-x))
+    elif self.activation == 'tanh':
+      return np.tanh(x)
     elif self.activation == 'softmax':
-      delta = error # for softmax, error is already the derivative
+      exp_x = np.exp(x - np.max(x, axis=1, keepdims=True))
+      return exp_x / np.sum(exp_x, axis=1, keepdims=True)
+    return x
 
-    grad_weights = np.dot(self.inputs.T, delta)
-    grad_biases = np.sum(delta, axis=0)
-
-    self.time_step += 1
-    # First moment vector. Beta is decay rate. Higher beta gives more weight toward previous gradients
-    self.m_weights = beta1 * self.m_weights + (1 - beta1) * grad_weights
-    self.m_biases = beta1 * self.m_biases + (1 - beta1) * grad_biases
-    # Second moment vector.
-    self.v_weights = beta2 * self.v_weights + (1 - beta2) * (grad_weights ** 2)
-    self.v_biases = beta2 * self.v_biases + (1 - beta2) * (grad_biases ** 2)
-
-    # To correct the biases introduced by initializing the first and second moment vectors at 0, Adam computes bias-corrected estimates
-    m_weights_hat = self.m_weights / (1 - beta1 ** self.time_step)
-    m_biases_hat = self.m_biases / (1 - beta1 ** self.time_step)
-
-    v_weights_hat = self.v_weights / (1 - beta2 ** self.time_step)
-    v_biases_hat = self.v_biases / (1 - beta2 ** self.time_step)
-
-
-    # Update weights and biases using formula. Epsilon prevents divison by 0 
-    self.weights -= learningRate * m_weights_hat / (np.sqrt(v_weights_hat) + epsilon)
-
-    self.bias -= learningRate * m_biases_hat / (np.sqrt(v_biases_hat) + epsilon)
-
-    # Gives error to be backpropogated to previous layer
-    return np.dot(delta, self.weights.T)
-
-  def reLU(self, x):
-    return np.maximum(0, x)
-
-  def reLU_deriv(self, x):
-    return np.where(x > 0, 1, 0)
+  def _apply_activation_derivative(self, d_output):
+    if self.activation == 'relu':
+      d_output[self.output <= 0] = 0
+    elif self.activation == 'sigmoid':
+      sigmoid = 1 / (1 + np.exp(-self.output))
+      d_output *= sigmoid * (1 - sigmoid)
+    elif self.activation == 'tanh':
+      d_output *= 1 - np.tanh(self.output) ** 2
+    return d_output
   
-  def sigmoid(self, x):
-    return 1 / (1 + np.exp(-x))
+  def _apply_softmax_derivative(self, d_output):
+    softmax = self._apply_activation(self.output)
+    d_input = d_output * softmax * (1 - softmax) 
+    return d_input
 
-  def sigmoid_derivative(self, x):
-    s = self.sigmoid(x)
-    return s * (1 - s)
-  
-  def softmax(self, x):
-    exp_vals = np.exp(x - np.max(x, axis=1, keepdims=True))
-    return exp_vals / np.sum(exp_vals, axis=1, keepdims=True)
+# dense_layer = Dense(input_size=3, output_size=2, learning_rate=0.001, activation='relu')
+
+# # Forward pass
+# input_data = np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
+# output_data = dense_layer.forwardPass(input_data)
+# print("Forward pass output:")
+# print(output_data)
+
+# # Backward pass
+# d_output = np.array([[1.0, 0.5], [0.2, 0.3]])
+# d_input = dense_layer.backprop(d_output)
+# print("Backward pass output:")
+# print(d_input)
+
+# input_data = np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
+# output_data = dense_layer.forwardPass(input_data)
+# print("Forward pass output:")
+# print(output_data)
