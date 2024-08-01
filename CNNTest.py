@@ -20,14 +20,14 @@ print('Data loaded')
 architecture = [
     ConvLayer(numFilters=6, filterSize=5),
     ReLU(),
-    Pooling(),
-    ConvLayer(numFilters=16, filterSize=5),
-    ReLU(),
-    Pooling(),
-    ConvLayer(numFilters=120, filterSize=5),
-    ReLU(),
-    Dense(inputSize=120, outputSize=84, activation='relu'),
-    Dense(inputSize=84, outputSize=10, activation='softmax')
+    # Pooling(),
+    # ConvLayer(numFilters=16, filterSize=5),
+    # ReLU(),
+    # Pooling(),
+    # ConvLayer(numFilters=120, filterSize=5),
+    # ReLU(),
+    Dense(inputSize=6, outputSize=15, activation='relu'),
+    Dense(inputSize=15, outputSize=10, activation='softmax')
 ]
 
 cnn = CNN(layers=architecture)

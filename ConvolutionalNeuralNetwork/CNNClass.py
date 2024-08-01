@@ -18,7 +18,6 @@ class CNN:
   def forward(self, image):
     output = image
     for layer in self.layers:
-      print(output.shape)
       output = layer.forwardPass(output)
 
     return softmax(output)
@@ -54,7 +53,7 @@ class CNN:
         for j in range(batchSizeActual):
           grad = gradient[j]
           for layer in reversed(self.layers):
-            grad = layer.backward(grad, learn_rate)
+            grad = layer.backprop(grad, learn_rate)
 
         print(f'Epoch {epoch+1}, Loss: {loss/(len(images)/batch_size)}')
 
