@@ -20,11 +20,11 @@ class Dense:
 
     return self.activated_output
   
-  def backprop(self, d_output):
-    if self.activation in ['relu', 'sigmoid', 'tanh']:
-      d_output = self._apply_activation_derivative(d_output)
-    elif self.activation == 'softmax':
+  def backprop(self, d_output, learn_rate):
+    if self.activation == 'softmax':
       d_output = self._apply_softmax_derivative(d_output)
+    else:
+      d_output = self._apply_activation_derivative(d_output)
     
     d_input = np.dot(d_output, self.weights.T)
     d_weights = np.dot(self.input.T, d_output)
@@ -58,9 +58,7 @@ class Dense:
     return d_output
   
   def _apply_softmax_derivative(self, d_output):
-    softmax = self._apply_activation(self.output)
-    d_input = d_output * softmax * (1 - softmax) 
-    return d_input
+    return d_output
 
 # dense_layer = Dense(input_size=3, output_size=2, learning_rate=0.001, activation='relu')
 

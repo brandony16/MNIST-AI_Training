@@ -1,8 +1,8 @@
 import numpy as np
 
 def softmax(x):
-  exp_x = np.exp(x - np.max(x))
-  return exp_x / exp_x.sum(axis=0)
+  exp_x = np.exp(x - np.max(x, axis=1, keepdims=True))
+  return exp_x / exp_x.sum(axis=1, keepdims=True)
 
 class CNN:
   def __init__(self, layers):
@@ -13,7 +13,7 @@ class CNN:
     for layer in self.layers:
       output = layer.forwardPass(output)
 
-    return softmax(output)
+    return output
   
   def backprop(self, d_output, learning_rate):
     for layer in reversed(self.layers):
@@ -33,7 +33,10 @@ class CNN:
           y_batch = labels[start:end]
 
           # Forward pass
-          predictions = self.forward(x_batch)
+          outputs = np.array([self.forward(x) for x in x_batch])
+          averaged_outputs = np.mean(outputs, axis=1)
+
+          predictions = softmax(averaged_outputs)
 
           # Compute loss (cross-entropy loss)
           loss = self._cross_entropy_loss(predictions, y_batch)
@@ -44,6 +47,7 @@ class CNN:
 
           # Backward pass
           self.backprop(d_output, learn_rate)
+          print("Minibatch completed")
 
       epoch_loss /= num_batches
       print(f'Epoch {epoch + 1}/{epochs}, Loss: {epoch_loss:.4f}')

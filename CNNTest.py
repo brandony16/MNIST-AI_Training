@@ -36,8 +36,7 @@ architecture = [
 cnn = CNN(layers=architecture)
 
 print("Training Started")
-cnn.forward(trainImages[0])
-# cnn.train(trainImages, trainLabels, epochs=3, learn_rate=0.005, batch_size=32)
+cnn.train(trainImages, trainLabels, epochs=3, learn_rate=0.005, batch_size=32)
 
 predictedLabels = np.array([cnn.predict(image) for image in testImages])
 
