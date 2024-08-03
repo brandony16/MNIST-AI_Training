@@ -33,10 +33,9 @@ class CNN:
           y_batch = labels[start:end]
 
           # Forward pass
-          outputs = np.array([self.forward(x) for x in x_batch])
-          averaged_outputs = np.mean(outputs, axis=1)
+          outputs = np.array(self.forward(x_batch))
 
-          predictions = softmax(averaged_outputs)
+          predictions = softmax(outputs)
 
           # Compute loss (cross-entropy loss)
           loss = self._cross_entropy_loss(predictions, y_batch)

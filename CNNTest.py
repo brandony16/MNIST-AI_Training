@@ -29,14 +29,14 @@ architecture = [
     # ConvLayer(numFilters=120, filterSize=5),
     # ReLU(),
     flatten(),
-    Dense(input_size=576, output_size=15, activation='relu'),
-    Dense(input_size=15, output_size=10, activation='softmax')
+    # Dense(input_size=576, output_size=15, activation='relu'),
+    Dense(input_size=3456, output_size=10, activation='softmax')
 ]
 
 cnn = CNN(layers=architecture)
 
 print("Training Started")
-cnn.train(trainImages, trainLabels, epochs=3, learn_rate=0.005, batch_size=32)
+cnn.train(trainImages, trainLabels, epochs=1, learn_rate=0.005, batch_size=32)
 
 predictedLabels = np.array([cnn.predict(image) for image in testImages])
 

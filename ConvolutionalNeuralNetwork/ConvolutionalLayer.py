@@ -10,13 +10,13 @@ class ConvLayer:
     self.filters = np.random.randn(num_filters, filter_size, filter_size) / (filter_size ** 2)
 
   # Pads image
-  def _pad_input(self, image):
+  def _pad_input(self, inputs):
     if self.padding == 'same':
-      pad_height = (self.stride * (input.shape[0] - 1) + self.filter_size - input.shape[0]) // 2
-      pad_width = (self.stride * (input.shape[1] - 1) + self.filter_size - input.shape[0]) // 2
-      padded_input = np.pad(input, ((pad_height, pad_height), (pad_width, pad_width)), mode='constant')
+        pad_height = (self.stride * (inputs.shape[1] - 1) + self.filter_size - inputs.shape[1]) // 2
+        pad_width = (self.stride * (inputs.shape[2] - 1) + self.filter_size - inputs.shape[2]) // 2
+        padded_input = np.pad(inputs, ((0, 0), (pad_height, pad_height), (pad_width, pad_width)), mode='constant')
     elif self.padding == 'valid':
-      padded_input = image
+        padded_input = inputs
     return padded_input
 
   # Does convolution
@@ -38,46 +38,55 @@ class ConvLayer:
 
     return output
   
-  def forwardPass(self, input):
-    self.input = self._pad_input(input)
-    self.output = np.zeros((self.num_filters, 
-                        (self.input.shape[0] - self.filter_size) // self.stride + 1, # Height of output feature map
-                        (self.input.shape[1] - self.filter_size) // self.stride + 1)) # WIdth of output feature map
-    for f in range(self.num_filters):
-      self.output[f] = self._convolve(input, self.filters[f])
+  def forwardPass(self, inputs):
+    self.inputs = inputs
+    batch_size, input_height, input_width = inputs.shape
+    inputs_padded = self._pad_input(inputs)
 
-    return self.output
+    if self.padding == 'same':
+      output_height = input_height
+      output_width = input_width
+    else:  # 'valid' padding
+      output_height = (input_height - self.filter_size) // self.stride + 1
+      output_width = (input_width - self.filter_size) // self.stride + 1
+
+    output = np.zeros((batch_size, self.num_filters, output_height, output_width))
+
+    for b in range(batch_size):
+      for f in range(self.num_filters):
+        output[b, f] = self._convolve(inputs_padded[b], self.filters[f])
+
+    return output
 
   def backprop(self, d_output, learning_rate):
-    # Update filters
+    batch_size, input_height, input_width = self.inputs.shape
+    input_padded = self._pad_input(self.inputs)
+
     d_filters = np.zeros_like(self.filters, dtype=np.float64)
-    input_padded = self._pad_input(self.input)
+    d_input_padded = np.zeros_like(input_padded, dtype=np.float64)    
 
-    for f in range(self.num_filters):
-      for i in range(d_filters.shape[1]):
-        for j in range(d_filters.shape[2]):
-          region = input_padded[i:i+d_output.shape[1]*self.stride:self.stride, 
-                                  j:j+d_output.shape[2]*self.stride:self.stride]
-          d_filters[f, i, j] = np.sum(region * d_output[f])
+    for b in range(batch_size):
+      for f in range(self.num_filters):
+        for i in range(d_output.shape[2]):  # Height of the output gradient
+          for j in range(d_output.shape[3]):  # Width of the output gradient
+            h_start = i * self.stride
+            h_end = h_start + self.filter_size
+            w_start = j * self.stride
+            w_end = w_start + self.filter_size
+
+            region = input_padded[b, h_start:h_end, w_start:w_end]
+            d_filters[f] += region * d_output[b, f, i, j]
+            d_input_padded[b, h_start:h_end, w_start:w_end] += self.filters[f] * d_output[b, f, i, j]
+
     self.filters -= learning_rate * d_filters
-
-    # Calculate Gradient
-    d_input = np.zeros_like(self.input, dtype=np.float64)
-
-    for f in range(self.num_filters):
-      for i in range(d_output.shape[1]):
-        for j in range(d_output.shape[2]):
-          h_start = i * self.stride
-          h_end = h_start + self.filter_size
-          w_start = j * self.stride
-          w_end = w_start + self.filter_size
-          d_input[h_start:h_end, w_start:w_end] += self.filters[f] * d_output[f,i,j]
 
     # Remove and padding
     if self.padding == 'same':
-      pad_height = (self.input.shape[0] - self.filters.shape[1]) // 2
-      pad_width = (self.input.shape[1] - self.filters.shape[2]) // 2
-      d_input = d_input[pad_height:-pad_height, pad_width:-pad_width]
+      pad_height = (input_height - self.filter_size) // 2
+      pad_width = (input_width - self.filter_size) // 2
+      d_input = d_input_padded[:, pad_height:-pad_height, pad_width:-pad_width]
+    elif self.padding == 'valid':
+      d_input = d_input_padded
     
     return d_input
 

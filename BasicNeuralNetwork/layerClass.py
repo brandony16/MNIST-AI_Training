@@ -36,7 +36,6 @@ class Layer:
       delta = error * self.sigmoid_derivative(self.output)
     elif self.activation == 'softmax':
       delta = error # for softmax, error is already the derivative
-
     grad_weights = np.dot(self.inputs.T, delta)
     grad_biases = np.sum(delta, axis=0)
 
