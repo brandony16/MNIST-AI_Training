@@ -1,4 +1,6 @@
 import numpy as np
+from numpy.lib.stride_tricks import as_strided
+from numba import njit, prange
 
 class ConvLayer:
   def __init__(self, num_filters, filter_size, stride = 1, padding='valid'):
@@ -20,23 +22,27 @@ class ConvLayer:
     return padded_input
 
   # Does convolution
-  def _convolve(self, input, filter):
+  @staticmethod
+  @njit(parallel=True)
+  def _convolve(input, filters, stride):
+    num_filters, filter_height, filter_width = filters.shape
     input_height, input_width = input.shape
-    filter_height, filter_width = filter.shape
 
-    output_height = (input_height - filter_height) // self.stride + 1
-    output_width = (input_width - filter_width) // self.stride + 1
-    output = np.zeros((output_height, output_width))
+    output_height = (input_height - filter_height) // stride + 1
+    output_width = (input_width - filter_width) // stride + 1
+    output = np.zeros((num_filters, output_height, output_width))
 
-    for i in range(output_height):
-      for j in range(output_width):
-        h_start = i * self.stride
-        h_end = h_start + filter_height
-        w_start = j * self.stride
-        w_end = w_start + filter_width
-        output[i, j] = np.sum(input[h_start:h_end, w_start:w_end] * filter)
+    for f in prange(num_filters):
+        for i in range(output_height):
+            for j in range(output_width):
+                h_start = i * stride
+                h_end = h_start + filter_height
+                w_start = j * stride
+                w_end = w_start + filter_width
+                output[f, i, j] = np.sum(input[h_start:h_end, w_start:w_end] * filters[f])
 
     return output
+
   
   def forwardPass(self, inputs):
     self.inputs = inputs
@@ -44,51 +50,55 @@ class ConvLayer:
     inputs_padded = self._pad_input(inputs)
 
     if self.padding == 'same':
-      output_height = input_height
-      output_width = input_width
+        output_height = input_height
+        output_width = input_width
     else:  # 'valid' padding
-      output_height = (input_height - self.filter_size) // self.stride + 1
-      output_width = (input_width - self.filter_size) // self.stride + 1
+        output_height = (input_height - self.filter_size) // self.stride + 1
+        output_width = (input_width - self.filter_size) // self.stride + 1
 
     output = np.zeros((batch_size, self.num_filters, output_height, output_width))
 
     for b in range(batch_size):
-      for f in range(self.num_filters):
-        output[b, f] = self._convolve(inputs_padded[b], self.filters[f])
+        output[b] = self._convolve(inputs_padded[b], self.filters, self.stride)
 
     return output
 
+  @staticmethod
+  @njit(parallel=True)
+  def _backprop(d_output, input_padded, filters, filter_size, stride):
+    num_filters, output_height, output_width = d_output.shape
+    d_filters = np.zeros_like(filters, dtype=np.float64)
+    d_input_padded = np.zeros_like(input_padded, dtype=np.float64)
+
+    for f in prange(num_filters):
+        for i in range(output_height):
+            for j in range(output_width):
+                h_start = i * stride
+                h_end = h_start + filter_size
+                w_start = j * stride
+                w_end = w_start + filter_size
+
+                region = input_padded[h_start:h_end, w_start:w_end]
+                d_filters[f] += region * d_output[f, i, j]
+                d_input_padded[h_start:h_end, w_start:w_end] += filters[f] * d_output[f, i, j]
+
+    return d_filters, d_input_padded
+
   def backprop(self, d_output, learning_rate):
-    batch_size, input_height, input_width = self.inputs.shape
-    input_padded = self._pad_input(self.inputs)
+      batch_size, input_height, input_width = self.inputs.shape
+      input_padded = self._pad_input(self.inputs)
 
-    d_filters = np.zeros_like(self.filters, dtype=np.float64)
-    d_input_padded = np.zeros_like(input_padded, dtype=np.float64)    
+      d_filters = np.zeros_like(self.filters, dtype=np.float64)
+      d_input = np.zeros_like(self.inputs, dtype=np.float64)
 
-    for b in range(batch_size):
-      for f in range(self.num_filters):
-        for i in range(d_output.shape[2]):  # Height of the output gradient
-          for j in range(d_output.shape[3]):  # Width of the output gradient
-            h_start = i * self.stride
-            h_end = h_start + self.filter_size
-            w_start = j * self.stride
-            w_end = w_start + self.filter_size
+      for b in range(batch_size):
+          d_f, d_input_padded = self._backprop(d_output[b], input_padded[b], self.filters, self.filter_size, self.stride)
+          d_filters += d_f
+          d_input[b] = d_input_padded[:input_height, :input_width]  # Assuming padding='same'
 
-            region = input_padded[b, h_start:h_end, w_start:w_end]
-            d_filters[f] += region * d_output[b, f, i, j]
-            d_input_padded[b, h_start:h_end, w_start:w_end] += self.filters[f] * d_output[b, f, i, j]
+      self.filters -= learning_rate * d_filters
 
-    self.filters -= learning_rate * d_filters
-
-    # Remove and padding
-    if self.padding == 'same':
-      pad_height = (input_height - self.filter_size) // 2
-      pad_width = (input_width - self.filter_size) // 2
-      d_input = d_input_padded[:, pad_height:-pad_height, pad_width:-pad_width]
-    elif self.padding == 'valid':
-      d_input = d_input_padded
-    
-    return d_input
+      return d_input
 
 # input = np.array([
 #     [1, 2, 3, 0],

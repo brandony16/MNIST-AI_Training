@@ -63,6 +63,6 @@ class CNN:
       clipped_preds = np.clip(predictions, 1e-12, 1 - 1e-12)
       return (clipped_preds - labels) / n_samples
   
-  def predict(self, image):
-        out = self.forward(image)
+  def predict(self, images):
+        out = self.forward(images)
         return np.argmax(out)
