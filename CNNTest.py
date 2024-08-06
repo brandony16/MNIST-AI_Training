@@ -7,10 +7,22 @@ from ConvolutionalNeuralNetwork.DenseLayer import Dense
 from ConvolutionalNeuralNetwork.PoolingLayer import Pooling
 from ConvolutionalNeuralNetwork.ReLUClass import ReLU
 from ConvolutionalNeuralNetwork.Flatten import flatten
+import torch
+
+if torch.cuda.is_available():
+    device = torch.device("cuda")
+    print(f"Using GPU: {torch.cuda.get_device_name(0)}")
+else:
+    device = torch.device("cpu")
+    print("GPU not available, using CPU.")
 
 trainImages, trainLabels, testImages, testLabels = load_and_preprocess_mnist()
 trainImages = trainImages.reshape(-1, 28, 28)
 testImages = testImages.reshape(-1, 28, 28)
+trainImages = trainImages.to(device)
+testImages = testImages.to(device)
+trainLabels = trainLabels.to(device)
+testLabels = testLabels.to(device)
 print('Data loaded')
 
 architecture = [
@@ -27,7 +39,7 @@ architecture = [
     Dense(input_size=3456, output_size=10, activation='softmax')
 ]
 
-cnn = CNN(layers=architecture)
+cnn = CNN(layers=architecture).to(device)
 
 print("Training Started")
 cnn.train(trainImages, trainLabels, epochs=1, learn_rate=0.005, batch_size=32)

@@ -35,32 +35,32 @@ class Dense:
   @staticmethod
   @njit(parallel=True)
   def _compute_gradients(d_output, input, weights):
-      d_input = np.dot(d_output, weights.T)
-      d_weights = np.dot(input.T, d_output)
-      d_biases = np.sum(d_output, axis=0)
-      return d_input, d_weights, d_biases
+    d_input = np.dot(d_output, weights.T)
+    d_weights = np.dot(input.T, d_output)
+    d_biases = np.sum(d_output, axis=0)
+    return d_input, d_weights, d_biases
 
   def _apply_activation(self, x):
-      if self.activation == 'relu':
-          return np.maximum(0, x)
-      elif self.activation == 'sigmoid':
-          return 1 / (1 + np.exp(-x))
-      elif self.activation == 'tanh':
-          return np.tanh(x)
-      elif self.activation == 'softmax':
-          exp_x = np.exp(x - np.max(x, axis=1, keepdims=True))
-          return exp_x / np.sum(exp_x, axis=1, keepdims=True)
-      return x
+    if self.activation == 'relu':
+        return np.maximum(0, x)
+    elif self.activation == 'sigmoid':
+        return 1 / (1 + np.exp(-x))
+    elif self.activation == 'tanh':
+        return np.tanh(x)
+    elif self.activation == 'softmax':
+        exp_x = np.exp(x - np.max(x, axis=1, keepdims=True))
+        return exp_x / np.sum(exp_x, axis=1, keepdims=True)
+    return x
 
   def _apply_activation_derivative(self, d_output):
-      if self.activation == 'relu':
-          d_output[self.output <= 0] = 0
-      elif self.activation == 'sigmoid':
-          sigmoid = 1 / (1 + np.exp(-self.output))
-          d_output *= sigmoid * (1 - sigmoid)
-      elif self.activation == 'tanh':
-          d_output *= 1 - np.tanh(self.output) ** 2
-      return d_output
+    if self.activation == 'relu':
+        d_output[self.output <= 0] = 0
+    elif self.activation == 'sigmoid':
+        sigmoid = 1 / (1 + np.exp(-self.output))
+        d_output *= sigmoid * (1 - sigmoid)
+    elif self.activation == 'tanh':
+        d_output *= 1 - np.tanh(self.output) ** 2
+    return d_output
 
   def _apply_softmax_derivative(self, d_output):
       return d_output
