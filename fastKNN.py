@@ -4,40 +4,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 from sklearn.decomposition import PCA
 import sys
-
-# Load the MNIST dataset (70,000 numbers)
-mnist = fetch_openml("mnist_784", version=1)
-X, y = mnist["data"], mnist["target"]
-
-# Convert data to numeric values
-X = X.astype(np.float32)
-y = y.astype(int)
-
-# Split the dataset into training and testing sets
-# 56,000 training, 14,000 testing
-X_train, X_test, y_train, y_test = train_test_split(
-    X, y, test_size=0.2, random_state=42
-)
-
-# Convert to numpy arrays
-X_train = X_train.to_numpy()
-X_test = X_test.to_numpy()
-y_train = y_train.to_numpy()
-y_test = y_test.to_numpy()
-
-# Lower dimensionality for speedup
-pca = PCA(n_components=50).fit(X_train)
-X_train = pca.transform(X_train)
-X_test = pca.transform(X_test)
-
-# Normalize the pixel values
-X_train = X_train / 255.0
-X_test = X_test / 255.0
-
-# Get training set
-set_size = 10000
-X_train_set = X_train[:set_size]
-y_train_set = y_train[:set_size]
+import time
 
 
 def knn_predict_fast(X_train, y_train, X_test, k=3):
@@ -91,14 +58,56 @@ def knn_predict_fast(X_train, y_train, X_test, k=3):
     return y_pred
 
 
-# Number of neighbors to evaluate
-default_k = 3
-try:
-    k = int(sys.argv[1])
-except:
-    k = default_k
+def main():
+    # Load the MNIST dataset (70,000 numbers)
+    mnist = fetch_openml("mnist_784", version=1)
+    X, y = mnist["data"], mnist["target"]
 
-# Predict and get accuracy
-print(f"Data Loaded. Starting KNN with k={k}")
-y_pred = knn_predict_fast(X_train_set, y_train_set, X_test, k)
-print(f"Accuracy, {accuracy_score(y_test, y_pred)*100:.2f}%")
+    # Convert data to numeric values
+    X = X.astype(np.float32)
+    y = y.astype(int)
+
+    # Split the dataset into training and testing sets
+    # 56,000 training, 14,000 testing
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.2, random_state=42
+    )
+
+    # Convert to numpy arrays
+    X_train = X_train.to_numpy()
+    X_test = X_test.to_numpy()
+    y_train = y_train.to_numpy()
+    y_test = y_test.to_numpy()
+
+    # Lower dimensionality for speedup
+    pca = PCA(n_components=50).fit(X_train)
+    X_train = pca.transform(X_train)
+    X_test = pca.transform(X_test)
+
+    # Normalize the pixel values
+    X_train = X_train / 255.0
+    X_test = X_test / 255.0
+
+    # Get training set
+    set_size = 10000
+    X_train_set = X_train[:set_size]
+    y_train_set = y_train[:set_size]
+
+    # Number of neighbors to evaluate
+    default_k = 3
+    try:
+        k = int(sys.argv[1])
+    except:
+        k = default_k
+
+    # Predict and get accuracy
+    print(f"Data Loaded. Starting KNN with k={k}")
+    y_pred = knn_predict_fast(X_train_set, y_train_set, X_test, k)
+    print(f"Accuracy, {accuracy_score(y_test, y_pred)*100:.2f}%")
+
+
+if __name__ == "__main__":
+    start = time.perf_counter()
+    main()
+    end = time.perf_counter()
+    print(f"Elapsed time: {end - start:.3f} seconds")

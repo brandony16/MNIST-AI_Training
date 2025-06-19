@@ -6,4 +6,5 @@ A project to familiarize myself with different forms of machine learning and AI,
 - K Nearest Neigbors
 - Random Forest
 - Multilayer Perceptron
-- Convolutional Neural Network
+
+Add visualizations
