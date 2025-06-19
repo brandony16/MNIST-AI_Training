@@ -2,7 +2,7 @@ from sklearn.datasets import fetch_openml
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
 from sklearn.metrics import accuracy_score, classification_report
-from RandomForest import RandomForest
+from FastRandomForest import FastRandomForest
 import time
 
 
@@ -36,7 +36,7 @@ def main():
     y_train_sample = y_train[:sample_size]
 
     # Step 5: Initialize and train the RandomForestClassifier
-    forest = RandomForest(n_trees=100, max_depth=15, n_jobs=-1, max_features=56)
+    forest = FastRandomForest(num_trees=100, max_depth=15, max_features=56, n_jobs=-1)
     forest.fit(X_train_sample, y_train_sample)
 
     # Step 6: Make predictions and evaluate the model

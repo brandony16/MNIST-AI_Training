@@ -77,7 +77,7 @@ def best_split(
         right_sum_sq = parent_sum_sq
 
         # Calculate cumulative sums for class counts
-        for i in range(1, n_samples):
+        for i in prange(1, n_samples):
             c = idx_labels[i - 1]
             old_left = counts_left[c]
             old_right = counts_right[c]
@@ -103,10 +103,10 @@ def best_split(
             # Update best gini and split point if current split is better
             if gini < best_gini:
                 best_gini = gini
-                best_idx = feature_idx
-                best_thr = (feature_vals[i] + feature_vals[i - 1]) / 2
+                best_feature = feature_idx
+                best_threshold = (feature_vals[i] + feature_vals[i - 1]) / 2
 
-    return best_idx, best_thr
+    return best_feature, best_threshold
 
 
 class DecisionTree:
@@ -126,7 +126,7 @@ class DecisionTree:
         # Number of classes. 10 bc 0-9
         self.n_classes_ = len(set(y))
 
-        # Number of inputs. 784 bc 28x28 images
+        # Number of features.
         self.n_features_ = X.shape[1]
 
         self.tree_ = self._grow_tree(X, y, depth=0)

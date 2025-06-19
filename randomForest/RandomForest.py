@@ -31,5 +31,6 @@ class RandomForest:
                 delayed(tree.predict)(X) for tree in self.trees
             )
         )
+        
         # Find the mode of the predictions of the trees
         return np.squeeze(stats.mode(tree_predictions, axis=0)[0])
