@@ -2,6 +2,8 @@ import numpy as np
 from fastDecisionTree import FastDecisionTree
 from joblib import Parallel, delayed
 from typing import Optional
+from scipy.stats import mode
+import multiprocessing
 
 
 class FastRandomForest:
@@ -25,10 +27,10 @@ class FastRandomForest:
         self.max_features = max_features
         self.min_samples_leaf = min_samples_leaf
         self.bootstrap = bootstrap
-        self.n_jobs = n_jobs
+        self.n_jobs = resolve_n_jobs(n_jobs)
         self.random_state = random_state
 
-        trees_per_job = np.ceil(num_trees / n_jobs)
+        trees_per_job = (num_trees + n_jobs - 1) // n_jobs
         self.trees_per_job = trees_per_job
 
         # Will be populated after fit()
@@ -62,11 +64,12 @@ class FastRandomForest:
             for i in range(0, self.num_trees, self.trees_per_job)
         ]
 
-        self.trees = Parallel(n_jobs=self.n_jobs, verbose=0, backend="threading")(
+        tree_batches = Parallel(n_jobs=self.n_jobs, verbose=0, backend="threading")(
             delayed(self._fit_batch)(data, labels, idx_chunk, seed_chunk)
             for idx_chunk, seed_chunk in zip(chunks, seed_chunks)
         )
 
+        self.trees_ = [tree for batch in tree_batches for tree in batch]
         return self
 
     def _fit_batch(
@@ -108,17 +111,35 @@ class FastRandomForest:
         Predict class labels for X by majority vote over all trees.
         """
         data = np.asarray(data, dtype=np.float32)
-        num_samples = data.shape[0]
 
-        predictions = Parallel(n_jobs=self.n_jobs, verbose=0)(
-            delayed(tree.predict)(data) for tree in self.trees
+        tree_chunks = [
+            self.trees_[i : i + self.trees_per_job]
+            for i in range(0, self.num_trees, self.trees_per_job)
+        ]
+
+        chunk_predictions = Parallel(n_jobs=self.n_jobs, verbose=0)(
+            delayed(self._predict_batch)(chunk, data) for chunk in tree_chunks
         )
-        predictions = np.vstack(predictions)
 
-        # Majority Vote
-        final = np.empty(num_samples, dtype=np.int32)
-        for i in range(num_samples):
-            counts = np.bincount(predictions[:, i], minlength=len(self.classes_))
-            final[i] = counts.argmax()
+        predictions = np.vstack(chunk_predictions)
 
-        return final
+        return np.squeeze(mode(predictions, axis=0)[0])
+
+    def _predict_batch(self, trees, data):
+        # Predict tree in batches
+        return np.vstack([tree.predict(data) for tree in trees])
+
+
+def resolve_n_jobs(n_jobs):
+    """
+    Turns n_jobs into a positive integer:
+     - If n_jobs > 0: use that many jobs.
+     - If n_jobs == 0: treat as 1.
+     - If n_jobs < 0: use (n_cores + 1 + n_jobs), e.g. -1 → all cores, -2 → all but one.
+    """
+    n_cpus = multiprocessing.cpu_count()  # total logical cores
+    if n_jobs is None or n_jobs == 0:
+        return 1
+    if n_jobs < 0:
+        return max(1, n_cpus + 1 + n_jobs)
+    return n_jobs

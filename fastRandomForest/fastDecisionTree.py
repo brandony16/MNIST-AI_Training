@@ -1,5 +1,17 @@
 import numpy as np
 from fastSplit import fast_best_split
+from numba import njit
+
+@njit(nogil=True)
+def _predict_one_njit(x, feat, thr, left, right, pred):
+    node = 0
+    # feature < 0 marks a leaf
+    while feat[node] >= 0:
+        if x[feat[node]] < thr[node]:
+            node = left[node]
+        else:
+            node = right[node]
+    return pred[node]
 
 
 class FastDecisionTree:
@@ -20,12 +32,33 @@ class FastDecisionTree:
 
     def fit(self, data: np.ndarray, labels: np.ndarray):
         self.num_samples, self.num_features = data.shape
-        self.num_classes = len(set(labels))
+        self.num_classes = int(labels.max() + 1)
         self.tree = self._grow_tree(data, labels, depth=0)
 
-    def predict(self, data: np.ndarray) -> np.ndarray:
-        return np.asarray([self._predict_one(input) for input in data], dtype=np.int32)
+        self._node_count = 0
+        self._count_nodes(self.tree)
+        N = self._node_count
 
+        self._feat = np.empty(N, dtype=np.int32)
+        self._thr = np.empty(N, dtype=np.float32)
+        self._left = np.empty(N, dtype=np.int32)
+        self._right = np.empty(N, dtype=np.int32)
+        self._pred = np.empty(N, dtype=np.int32)
+
+        # fill them in preorder
+        self._node_count = 0
+        self._export(self.tree)
+
+    def predict(self, data: np.ndarray) -> np.ndarray:
+        n = data.shape[0]
+        out = np.empty(n, dtype=np.int32)
+        for i in range(n):
+            out[i] = _predict_one_njit(
+                data[i], self._feat, self._thr, self._left, self._right, self._pred
+            )
+        return out
+
+    # Build tree recursively
     def _grow_tree(self, data: np.ndarray, labels: np.ndarray, depth: int) -> dict:
         num_entries = labels.size
         counts = np.bincount(labels, minlength=self.num_classes)
@@ -35,8 +68,8 @@ class FastDecisionTree:
 
         # Terminal Condition
         leaf_node = {
-            "feature": None,
-            "threshold": None,
+            "feature": -1,
+            "threshold": 0.0,
             "left": None,
             "right": None,
             "prediction": prediction,
@@ -51,7 +84,7 @@ class FastDecisionTree:
         feature, threshold = fast_best_split(
             data, labels, self.num_classes, self.max_features
         )
-        if feature is None:
+        if feature < 0:
             return leaf_node
 
         mask_left = data[:, feature] < threshold
@@ -75,11 +108,29 @@ class FastDecisionTree:
             "prediction": prediction,
         }
 
-    def _predict_one(self, input: np.ndarray) -> int:
-        node = self.tree
-        while node["feature"] is not None:
-            if input[node["feature"]] < node["threshold"]:
-                node = node["left"]
-            else:
-                node = node["right"]
-        return node["prediction"]
+    def _count_nodes(self, node):
+        self._node_count += 1
+        if node["feature"] >= 0:
+            self._count_nodes(node["left"])
+            self._count_nodes(node["right"])
+
+    def _export(self, node):
+        idx = self._node_count
+        self._node_count += 1
+
+        self._feat[idx] = node["feature"]
+        self._thr[idx] = node["threshold"]
+        self._pred[idx] = node["prediction"]
+        if node["feature"] < 0:
+            # leaf: point children at self to stop
+            self._left[idx] = idx
+            self._right[idx] = idx
+        else:
+            # reserve space for children
+            left_idx = self._node_count
+            self._left[idx] = left_idx
+            self._export(node["left"])
+
+            right_idx = self._node_count
+            self._right[idx] = right_idx
+            self._export(node["right"])

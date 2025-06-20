@@ -41,10 +41,12 @@ def main():
     forest = FastRandomForest(num_trees=100, max_depth=15, max_features=56, n_jobs=12)
     forest.fit(X_train_sample, y_train_sample)
 
+    X_test_sample = X_test[:sample_size]
+    y_test_sample = y_test[:sample_size]
     # Step 6: Make predictions and evaluate the model
-    y_pred = forest.predict(X_test)
-    accuracy = accuracy_score(y_test, y_pred)
-    report = classification_report(y_test, y_pred, target_names=label_encoder.classes_)
+    y_pred = forest.predict(X_test_sample)
+    accuracy = accuracy_score(y_test_sample, y_pred)
+    report = classification_report(y_test_sample, y_pred, target_names=label_encoder.classes_)
 
     # Print the results
     print(f"Accuracy: {accuracy:.4f}")

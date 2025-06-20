@@ -2,7 +2,7 @@ from numba import njit, prange
 import numpy as np
 
 
-@njit
+@njit(nogil=True)
 def _gini_from_sqsum(sum_sq: float, total: int) -> float:
     """
     Compute Gini impurity from sum of squared counts:
@@ -11,7 +11,7 @@ def _gini_from_sqsum(sum_sq: float, total: int) -> float:
     return 1.0 - sum_sq / (total * total)
 
 
-@njit(nogil=True)
+@njit(nogil=True, fastmath=True, cache=True)
 def fast_best_split(
     data: np.ndarray, labels: np.ndarray, num_classes: int, max_features: int
 ):
@@ -24,7 +24,7 @@ def fast_best_split(
     data : float32[npagesamples, n_features]
         Feature matrix at this node.
     labels : int32[n_samples]
-        Class labels (0..n_classes–1).
+        Class labels (0..n_classes-1).
     num_classes : int
         Number of unique classes.
     max_features : int
@@ -32,14 +32,14 @@ def fast_best_split(
 
     Returns
     -------
-    best_feat : int or None
-        Index of best feature, or None if no valid split found.
-    best_thr : float or None
+    best_feat : int
+        Index of best feature, or -1 if no valid split found.
+    best_thr : float
         Threshold for that feature (midpoint between adjacent values).
     """
     num_samples, num_features = data.shape
     if num_samples <= 1:
-        return None, None
+        return -1, 0.0
 
         # List of counts of each class in the current node
     parent_counts = np.bincount(labels, minlength=num_classes)
@@ -56,7 +56,7 @@ def fast_best_split(
 
     # Calculate the gini impurity for the current node
     best_gini = parent_gini
-    best_feature, best_threshold = None, None
+    best_feature, best_threshold = -1, 0.0
 
     counts_left = np.zeros(num_classes, dtype=np.int64)
     counts_right = parent_counts.copy()
