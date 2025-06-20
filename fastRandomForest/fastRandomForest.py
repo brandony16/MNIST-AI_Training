@@ -17,7 +17,7 @@ class FastRandomForest:
         max_features: Optional[int] = None,
         min_samples_leaf: int = 1,
         bootstrap: bool = True,
-        n_jobs: int = 1,
+        n_jobs: int = -1,
         random_state: Optional[int] = None,
     ):
         self.num_trees = num_trees
@@ -27,6 +27,9 @@ class FastRandomForest:
         self.bootstrap = bootstrap
         self.n_jobs = n_jobs
         self.random_state = random_state
+
+        trees_per_job = np.ceil(num_trees / n_jobs)
+        self.trees_per_job = trees_per_job
 
         # Will be populated after fit()
         self.trees_ = []  # list of DecisionTree
@@ -48,12 +51,40 @@ class FastRandomForest:
         else:
             all_indices = [np.arange(num_samples) for _ in range(self.num_trees)]
 
-        self.trees = Parallel(n_jobs=self.n_jobs, verbose=0)(
-            delayed(self._fit_tree)(data, labels, indices, seed)
-            for seed, indices in enumerate(all_indices)
+        seeds = list(range(self.num_trees))
+
+        chunks = [
+            all_indices[i : i + self.trees_per_job]
+            for i in range(0, len(all_indices), self.trees_per_job)
+        ]
+        seed_chunks = [
+            seeds[i : i + self.trees_per_job]
+            for i in range(0, self.num_trees, self.trees_per_job)
+        ]
+
+        self.trees = Parallel(n_jobs=self.n_jobs, verbose=0, backend="threading")(
+            delayed(self._fit_batch)(data, labels, idx_chunk, seed_chunk)
+            for idx_chunk, seed_chunk in zip(chunks, seed_chunks)
         )
 
         return self
+
+    def _fit_batch(
+        self, data: np.ndarray, labels: np.ndarray, index_arrays: list, seeds: list
+    ):
+        trees = []
+        for idxs, seed in zip(index_arrays, seeds):
+            # reseed so feature‐subsampling is reproducible
+            np.random.seed((self.random_state or 0) + seed)
+            data_s, labels_s = data[idxs], labels[idxs]
+            tree = FastDecisionTree(
+                max_depth=self.max_depth,
+                max_features=self.max_features,
+                min_samples_leaf=self.min_samples_leaf,
+            )
+            tree.fit(data_s, labels_s)
+            trees.append(tree)
+        return trees
 
     def _fit_tree(self, data: np.ndarray, labels: np.ndarray, sample_indices, seed):
         np.random.seed(
@@ -69,7 +100,7 @@ class FastRandomForest:
             min_samples_leaf=self.min_samples_leaf,
         )
         tree.fit(data_sample, labels_sample)
-        
+
         return tree
 
     def predict(self, data: np.ndarray) -> np.ndarray:

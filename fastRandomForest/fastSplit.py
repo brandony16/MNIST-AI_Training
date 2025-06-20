@@ -11,7 +11,7 @@ def _gini_from_sqsum(sum_sq: float, total: int) -> float:
     return 1.0 - sum_sq / (total * total)
 
 
-@njit
+@njit(nogil=True)
 def fast_best_split(
     data: np.ndarray, labels: np.ndarray, num_classes: int, max_features: int
 ):
