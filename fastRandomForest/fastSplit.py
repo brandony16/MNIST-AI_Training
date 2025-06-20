@@ -2,7 +2,7 @@ from numba import njit, prange
 import numpy as np
 
 
-@njit(nogil=True)
+@njit(nogil=True, fastmath=True)
 def _gini_from_sqsum(sum_sq: float, total: int) -> float:
     """
     Compute Gini impurity from sum of squared counts:

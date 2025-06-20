@@ -1,8 +1,9 @@
 import numpy as np
-from fastDecisionTree import FastDecisionTree
+from FastDecisionTree import FastDecisionTree
 from joblib import Parallel, delayed
 from typing import Optional
 from scipy.stats import mode
+from PredictForest import _predict_forest_njit
 import multiprocessing
 
 
@@ -70,6 +71,27 @@ class FastRandomForest:
         )
 
         self.trees_ = [tree for batch in tree_batches for tree in batch]
+
+        node_counts = [tree._feat.shape[0] for tree in self.trees_]
+        max_nodes = max(node_counts)
+
+        # 3) allocate forest‐level arrays, padding each tree to max_nodes
+        n_trees = len(self.trees_)
+        self.feat_arr = np.full((n_trees, max_nodes), -1, dtype=np.int32)
+        self.thr_arr = np.zeros((n_trees, max_nodes), dtype=np.float32)
+        self.left_arr = np.zeros((n_trees, max_nodes), dtype=np.int32)
+        self.right_arr = np.zeros((n_trees, max_nodes), dtype=np.int32)
+        self.pred_arr = np.zeros((n_trees, max_nodes), dtype=np.int32)
+
+        for t, tree in enumerate(self.trees_):
+            n = tree._feat.shape[0]
+            # copy into the first n slots; the rest stay as “leaf” (-1 feature)
+            self.feat_arr[t, :n] = tree._feat
+            self.thr_arr[t, :n] = tree._thr
+            self.left_arr[t, :n] = tree._left
+            self.right_arr[t, :n] = tree._right
+            self.pred_arr[t, :n] = tree._pred
+
         return self
 
     def _fit_batch(
@@ -89,53 +111,35 @@ class FastRandomForest:
             trees.append(tree)
         return trees
 
-    def _fit_tree(self, data: np.ndarray, labels: np.ndarray, sample_indices, seed):
-        np.random.seed(
-            self.random_state + seed if self.random_state is not None else None
-        )
-
-        data_sample = data[sample_indices]
-        labels_sample = labels[sample_indices]
-
-        tree = FastDecisionTree(
-            max_depth=self.max_depth,
-            max_features=self.max_features,
-            min_samples_leaf=self.min_samples_leaf,
-        )
-        tree.fit(data_sample, labels_sample)
-
-        return tree
-
     def predict(self, data: np.ndarray) -> np.ndarray:
         """
         Predict class labels for X by majority vote over all trees.
         """
         data = np.asarray(data, dtype=np.float32)
+        n_test = data.shape[0]
+        y_out = np.empty(n_test, dtype=np.int32)
+        num_classes = int(self.pred_arr.max()) + 1
 
-        tree_chunks = [
-            self.trees_[i : i + self.trees_per_job]
-            for i in range(0, self.num_trees, self.trees_per_job)
-        ]
-
-        chunk_predictions = Parallel(n_jobs=self.n_jobs, verbose=0)(
-            delayed(self._predict_batch)(chunk, data) for chunk in tree_chunks
+        _predict_forest_njit(
+            self.feat_arr,
+            self.thr_arr,
+            self.left_arr,
+            self.right_arr,
+            self.pred_arr,
+            data,
+            y_out,
+            num_classes,
         )
 
-        predictions = np.vstack(chunk_predictions)
-
-        return np.squeeze(mode(predictions, axis=0)[0])
-
-    def _predict_batch(self, trees, data):
-        # Predict tree in batches
-        return np.vstack([tree.predict(data) for tree in trees])
+        return y_out
 
 
 def resolve_n_jobs(n_jobs):
     """
     Turns n_jobs into a positive integer:
-     - If n_jobs > 0: use that many jobs.
-     - If n_jobs == 0: treat as 1.
-     - If n_jobs < 0: use (n_cores + 1 + n_jobs), e.g. -1 → all cores, -2 → all but one.
+    - If n_jobs > 0: use that many jobs.
+    - If n_jobs == 0: treat as 1.
+    - If n_jobs < 0: use (n_cores + 1 + n_jobs), e.g. -1 → all cores, -2 → all but one.
     """
     n_cpus = multiprocessing.cpu_count()  # total logical cores
     if n_jobs is None or n_jobs == 0:

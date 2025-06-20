@@ -19,7 +19,6 @@ class RandomForest:
         )
 
     def _fit_tree(self, X, y):
-        print("fitting tree")
         X_sample, y_sample = resample(X, y)
         tree = DecisionTree(max_depth=self.max_depth, max_features=self.max_features)
         tree.fit(X_sample, y_sample)

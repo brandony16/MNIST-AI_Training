@@ -1,17 +1,16 @@
 import numpy as np
-from fastSplit import fast_best_split
+from FastSplit import fast_best_split
 from numba import njit
 
-@njit(nogil=True)
-def _predict_one_njit(x, feat, thr, left, right, pred):
-    node = 0
-    # feature < 0 marks a leaf
-    while feat[node] >= 0:
-        if x[feat[node]] < thr[node]:
-            node = left[node]
-        else:
-            node = right[node]
-    return pred[node]
+
+@njit(nogil=True, cache=True, fastmath=True)
+def _argmax_numba(counts):
+    best = 0
+    # start from 1 because we initialize best=0
+    for i in range(1, counts.shape[0]):
+        if counts[i] > counts[best]:
+            best = i
+    return best
 
 
 class FastDecisionTree:
@@ -49,20 +48,13 @@ class FastDecisionTree:
         self._node_count = 0
         self._export(self.tree)
 
-    def predict(self, data: np.ndarray) -> np.ndarray:
-        n = data.shape[0]
-        out = np.empty(n, dtype=np.int32)
-        for i in range(n):
-            out[i] = _predict_one_njit(
-                data[i], self._feat, self._thr, self._left, self._right, self._pred
-            )
-        return out
+        return self
 
     # Build tree recursively
     def _grow_tree(self, data: np.ndarray, labels: np.ndarray, depth: int) -> dict:
         num_entries = labels.size
         counts = np.bincount(labels, minlength=self.num_classes)
-        prediction = int(np.argmax(counts))
+        prediction = _argmax_numba(counts)
         probability = counts / num_entries
         gini = 1.0 - np.sum(probability * probability)
 
