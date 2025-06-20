@@ -3,6 +3,7 @@ from sklearn.datasets import fetch_openml
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 from sklearn.decomposition import PCA
+from cacheMNIST import load_mnist_cached
 import sys
 import time
 
@@ -60,7 +61,7 @@ def knn_predict_fast(X_train, y_train, X_test, k=3):
 
 def main():
     # Load the MNIST dataset (70,000 numbers)
-    mnist = fetch_openml("mnist_784", version=1)
+    mnist = load_mnist_cached()
     X, y = mnist["data"], mnist["target"]
 
     # Convert data to numeric values
@@ -74,10 +75,10 @@ def main():
     )
 
     # Convert to numpy arrays
-    X_train = X_train.to_numpy()
-    X_test = X_test.to_numpy()
-    y_train = y_train.to_numpy()
-    y_test = y_test.to_numpy()
+    X_train = np.asarray(X_train)
+    X_test = np.asarray(X_test)
+    y_train = np.asarray(y_train)
+    y_test = np.asarray(y_test)
 
     # Lower dimensionality for speedup
     pca = PCA(n_components=50).fit(X_train)
@@ -89,7 +90,7 @@ def main():
     X_test = X_test / 255.0
 
     # Get training set
-    set_size = 10000
+    set_size = 56000
     X_train_set = X_train[:set_size]
     y_train_set = y_train[:set_size]
 

@@ -6,7 +6,7 @@ from typing import Optional
 
 class FastRandomForest:
     """
-    A fast Random Forest classifier using multiple Numba‑accelerated DecisionTree
+    A fast Random Forest classifier using multiple Numba-accelerated DecisionTree
     learners, bootstrap sampling, and parallel training/prediction.
     """
 
@@ -52,6 +52,7 @@ class FastRandomForest:
             delayed(self._fit_tree)(data, labels, indices, seed)
             for seed, indices in enumerate(all_indices)
         )
+
         return self
 
     def _fit_tree(self, data: np.ndarray, labels: np.ndarray, sample_indices, seed):
@@ -68,6 +69,7 @@ class FastRandomForest:
             min_samples_leaf=self.min_samples_leaf,
         )
         tree.fit(data_sample, labels_sample)
+        
         return tree
 
     def predict(self, data: np.ndarray) -> np.ndarray:

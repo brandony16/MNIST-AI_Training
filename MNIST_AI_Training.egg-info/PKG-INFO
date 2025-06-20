@@ -1,0 +1,24 @@
+Metadata-Version: 2.1
+Name: MNIST_AI_Training
+Version: 0.1.0
+Summary: A fast Random Forest implementation with Numba & NumPy
+Author: Your Name
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Requires-Python: >=3.7
+Description-Content-Type: text/markdown
+Requires-Dist: numpy
+Requires-Dist: numba
+Requires-Dist: joblib
+Requires-Dist: scikit-learn
+
+### MNIST AI TRAINING
+
+A project to familiarize myself with different forms of machine learning and AI, all trained on the MNIST data set
+
+## Forms of AI
+- K Nearest Neigbors
+- Random Forest
+- Multilayer Perceptron
+
+Add visualizations

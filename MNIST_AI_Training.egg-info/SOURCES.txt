@@ -1,0 +1,7 @@
+README.md
+setup.py
+MNIST_AI_Training.egg-info/PKG-INFO
+MNIST_AI_Training.egg-info/SOURCES.txt
+MNIST_AI_Training.egg-info/dependency_links.txt
+MNIST_AI_Training.egg-info/requires.txt
+MNIST_AI_Training.egg-info/top_level.txt
