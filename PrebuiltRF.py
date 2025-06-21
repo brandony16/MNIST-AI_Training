@@ -7,11 +7,10 @@ from cacheMNIST import load_mnist_cached
 import time
 
 def main():
-  # Step 1: Load the MNIST dataset
+  # Load the MNIST dataset
   mnist = load_mnist_cached()
   X, y = mnist["data"], mnist["target"]
 
-  # Step 2: Preprocess the data
   # Split the data into training and testing sets
   X_train, X_test, y_train, y_test = train_test_split(
       X, y, test_size=0.2, random_state=42

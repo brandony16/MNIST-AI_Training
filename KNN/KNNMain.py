@@ -9,7 +9,7 @@ import time
 
 
 def main():
-    # Load the MNIST dataset (70,000 numbers)
+    # Load the MNIST dataset (70,000 28x28 images of numbers)
     mnist = load_mnist_cached()
     X, y = mnist["data"], mnist["target"]
 
@@ -18,7 +18,7 @@ def main():
     y = y.astype(int)
 
     # Split the dataset into training and testing sets
-    # 56,000 training, 14,000 testing
+    # 56,000 training, 14,000 testing with 0.2 split
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=42
     )

@@ -5,7 +5,7 @@ from numba import njit, prange, float32
 @njit(parallel=True, fastmath=True, cache=True, nogil=True)
 def knn_predict_fast(data_train, labels_train, data_test, k=3, num_classes=10):
     """
-    Perform k-Nearest Neighbors classification in a fully vectorized way.
+    Perform k-Nearest Neighbors classification using JIT-compiling for improved performance
 
     This function computes the squared Euclidean distance between each test
     point and all training points using the identity:
