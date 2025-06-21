@@ -33,7 +33,7 @@ def main():
     y_train = label_encoder.fit_transform(y_train)
     y_test = label_encoder.transform(y_test)
 
-    sample_size = 1000
+    sample_size = 10000
     X_train_sample = X_train[:sample_size]
     y_train_sample = y_train[:sample_size]
 

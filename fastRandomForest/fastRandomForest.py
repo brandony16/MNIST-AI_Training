@@ -2,7 +2,6 @@ import numpy as np
 from FastDecisionTree import FastDecisionTree
 from joblib import Parallel, delayed
 from typing import Optional
-from scipy.stats import mode
 from PredictForest import _predict_forest_njit
 import multiprocessing
 
