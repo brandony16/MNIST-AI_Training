@@ -10,13 +10,23 @@ def main():
     print("Starting Program")
     train_images, train_labels, test_images, test_labels = load_and_preprocess_mnist()
     # Define the neural network architecture
-    layer_sizes = [784, 248, 10]
+    layer_sizes = [784, 1024, 512, 248, 128, 10]
 
     # relu and sigmoid activation functions available
     # reLU: Best accuracy: 97.45% Layers: 784, 512, 128, 10 Epochs: 10 Learning Rate: 0.01 Mini-batch Size: 32
     nn = FastNeuralNetwork(layer_sizes, "relu")
     print("Beginning Training")
-    nn.train(train_images, train_labels, 10, 0.01, 32)
+    epochs = 20
+    learning_rate = 0.001
+    for epoch in range(epochs):
+        if epoch in [5, 10, 15, 20]:
+            learning_rate *= 0.5
+        nn.train(train_images, train_labels, 1, learning_rate, 128)
+
+        epoch_test_predictions = cp.asnumpy(nn.predict(test_images))
+        epoch_test_labels_argmax = np.argmax(test_labels, axis=1)
+        epoch_accuracy = np.mean(epoch_test_predictions == epoch_test_labels_argmax)
+        print(f"Test Accuracy Epoch {epoch + 1}: {epoch_accuracy * 100:.2f}%")
 
     print("Evaluating on test data:")
     test_output = nn.forward(test_images)
@@ -27,7 +37,6 @@ def main():
     # Calculate accuracy
     test_labels_argmax = np.argmax(test_labels, axis=1)
     accuracy = np.mean(test_predictions == test_labels_argmax)
-    print(test_predictions[:10], test_labels_argmax[:10])
     print(f"Test Accuracy: {accuracy * 100:.2f}%")
 
     # Calculate confusion matrix, precision, recall, and F1-score

@@ -1,25 +1,44 @@
 import numpy as np
 from FastNeuralNetwork.FastLayer import FastLayer
 import cupy as cp
+from SoftmaxCELayer import SoftmaxCrossEntropyLayer
+from DenseLayer import DenseLayer
+
 
 class FastNeuralNetwork:
     def __init__(self, layer_sizes, activation="relu"):
         cp.random.seed(42)
-        self.layers = []
-        for i in range(len(layer_sizes) - 1):
-            activation = activation if i < len(layer_sizes) - 2 else "softmax"
-            self.layers.append(FastLayer(layer_sizes[i], layer_sizes[i + 1], activation))
+        self.hidden_layers = []
+        num_layers = len(layer_sizes)
+        for i in range(num_layers - 2):
+            self.hidden_layers.append(
+                FastLayer(layer_sizes[i], layer_sizes[i + 1], activation)
+            )
 
-    def forward(self, data):
+        # Final Dense (no activation) and CE layer for faster training
+        self.final_dense = DenseLayer(layer_sizes[-2], layer_sizes[-1])
+        self.ce_layer = SoftmaxCrossEntropyLayer()
+
+    def forward(self, data, labels=None):
         data = cp.asarray(data)
-        for layer in self.layers:
+        for layer in self.hidden_layers:
             data = layer.forward(data)
-        return data
+        logits = self.final_dense.forward(data)
 
-    def backward(self, y, output, learningRate):
-        error = self.cross_entropy_derivative(y, output)
-        for layer in reversed(self.layers):
-            error = layer.backward(error, learningRate)
+        if labels is None:
+            # inference: just return softmax probabilities
+            z_max = cp.max(logits, axis=1, keepdims=True)
+            exp_z = cp.exp(logits - z_max)
+            return exp_z / exp_z.sum(axis=1, keepdims=True)
+
+        return self.ce_layer.forward(logits, cp.asarray(labels))
+
+    def backward(self, learningRate):
+        gradient = self.ce_layer.backward()
+        gradient = self.final_dense.backward(gradient, learningRate)
+
+        for layer in reversed(self.hidden_layers):
+            gradient = layer.backward(gradient, learningRate)
 
     def train(self, data, labels, epochs=10, learningRate=0.1, batch_size=32):
         data = cp.asarray(data)
@@ -41,14 +60,8 @@ class FastNeuralNetwork:
                 batch_labels = labels[start_idx:end_idx]
 
                 # Forward and backward pass for the batch
-                output = self.forward(batch_data)
-                self.backward(batch_labels, output, learningRate)
-
-            if epoch % epochs // 10 == 0:
-                print(f"Epoch {epoch} of {epochs} completed")
-                print(
-                    f"Training Loss: {self.cross_entropy(labels, self.forward(data))}"
-                )
+                self.forward(batch_data, batch_labels)
+                self.backward(learningRate)
 
     # Loss calculation
     def cross_entropy(self, y, output):
