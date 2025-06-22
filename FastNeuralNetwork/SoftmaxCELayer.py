@@ -18,7 +18,5 @@ class SoftmaxCrossEntropyLayer:
 
     def cross_entropy(self, labels, output):
         # Clip values to prevent log(0)
-        output = cp.asarray(output)
-        labels = cp.asarray(labels)
         output = cp.clip(output, 1e-12, 1.0 - 1e-12)
         return -cp.mean(cp.sum(labels * cp.log(output + 1e-8), axis=1))

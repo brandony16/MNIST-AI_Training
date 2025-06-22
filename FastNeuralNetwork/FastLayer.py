@@ -1,5 +1,5 @@
-import numpy as np
 import cupy as cp
+
 
 class FastLayer:
     def __init__(self, inputSize, outputSize, activation="relu"):
@@ -16,14 +16,14 @@ class FastLayer:
             self.act_deriv = self.reLU_deriv
 
         # Adam Optimization Vars
-        self.m_weights = cp.zeros_like(
-            self.weights
-        )  # First moment vector m. Moving average of past gradients
-        self.v_weights = cp.zeros_like(
-            self.weights
-        )  # Second moment vecter v. Moving average of the squared gradients
+        # First moment vector m. Moving average of past gradients
+        # Second moment vecter v. Moving average of the squared gradients
+        self.m_weights = cp.zeros_like(self.weights)
+        self.v_weights = cp.zeros_like(self.weights)
+
         self.m_biases = cp.zeros_like(self.bias)
         self.v_biases = cp.zeros_like(self.bias)
+
         self.time_step = 0  # Used to calculate gradient gt at current time step t
 
     def forward(self, inputs):
@@ -57,7 +57,7 @@ class FastLayer:
         # To correct the biases introduced by initializing the first and second moment vectors at 0, Adam computes bias-corrected estimates
         m_weights_hat = self.m_weights / (1 - beta1**self.time_step)
         m_biases_hat = self.m_biases / (1 - beta1**self.time_step)
-        
+
         v_weights_hat = self.v_weights / (1 - beta2**self.time_step)
         v_biases_hat = self.v_biases / (1 - beta2**self.time_step)
 

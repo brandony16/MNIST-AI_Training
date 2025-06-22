@@ -1,4 +1,3 @@
-import numpy as np
 from FastNeuralNetwork.FastLayer import FastLayer
 import cupy as cp
 from SoftmaxCELayer import SoftmaxCrossEntropyLayer
@@ -45,7 +44,7 @@ class FastNeuralNetwork:
         labels = cp.asarray(labels)
 
         num_samples = data.shape[0]
-        for epoch in range(epochs):
+        for _ in range(epochs):
             # Shuffle the data at the beginning of each epoch
             indices = cp.arange(num_samples)
             cp.random.shuffle(indices)
