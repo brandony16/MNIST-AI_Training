@@ -14,7 +14,7 @@ def main():
     print("Starting Program")
     train_images, train_labels, test_images, test_labels, input, output = load_and_preprocess_cifar()
     # Define the neural network architecture
-    layer_sizes = [input, 2048, 1024, 512, 248, output]
+    layer_sizes = [input, 2048, 2048, 1024, 512, output]
 
     # relu and sigmoid activation functions available
     nn = FastNeuralNetwork(layer_sizes, "relu")
@@ -26,7 +26,7 @@ def main():
         if epoch % 5 == 0 and epoch != 0:
             learning_rate *= 0.5
         if epoch != 0:
-            nn.train(train_images, train_labels, 1, learning_rate, 128)
+            nn.train(train_images, train_labels, 1, learning_rate, 248)
 
         # Train Data
         epoch_train_output = nn.forward(train_images)
