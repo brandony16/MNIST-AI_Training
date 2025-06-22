@@ -1,27 +1,29 @@
 import numpy as np
 import cupy as cp
 import pandas as pd
-from sklearn.metrics import confusion_matrix, precision_score, recall_score, f1_score
 from loadMNIST import load_and_preprocess_mnist
+from loadCIFAR import load_and_preprocess_cifar
 from FastNeuralNetwork.FastNNModel import FastNeuralNetwork
-from Visualization import plot_curves, show_confusion_matrix, show_metrics
+from Visualization import show_all_metrics
 import time
 
 
 def main():
+    start = time.perf_counter()
+
     print("Starting Program")
-    train_images, train_labels, test_images, test_labels = load_and_preprocess_mnist()
+    train_images, train_labels, test_images, test_labels, input, output = load_and_preprocess_cifar()
     # Define the neural network architecture
-    layer_sizes = [784, 512, 248, 10]
+    layer_sizes = [input, 2048, 1024, 512, 248, output]
 
     # relu and sigmoid activation functions available
     nn = FastNeuralNetwork(layer_sizes, "relu")
     print("Beginning Training")
-    epochs = 10
+    epochs = 25
     learning_rate = 0.001
     history = []
     for epoch in range(epochs + 1):
-        if epoch % 3 == 0 and epoch != 0:
+        if epoch % 5 == 0 and epoch != 0:
             learning_rate *= 0.5
         if epoch != 0:
             nn.train(train_images, train_labels, 1, learning_rate, 128)
@@ -59,7 +61,6 @@ def main():
         print(f"Test Accuracy Epoch {epoch}: {epoch_test_accuracy * 100:.2f}%")
 
     dataframe = pd.DataFrame(history)
-    plot_curves(dataframe)
 
     print("Evaluating on test data:")
     test_output = nn.forward(test_images)
@@ -72,12 +73,11 @@ def main():
     accuracy = np.mean(test_predictions == test_labels_argmax)
     print(f"Test Accuracy: {accuracy * 100:.2f}%")
 
-    show_confusion_matrix(test_labels_argmax, test_predictions)
-    show_metrics(test_labels_argmax, test_predictions)
+    end = time.perf_counter()
+    print(f"Elapsed time: {end - start:.3f} seconds")
+
+    show_all_metrics(test_labels_argmax, test_predictions, dataframe)
 
 
 if __name__ == "__main__":
-    start = time.perf_counter()
     main()
-    end = time.perf_counter()
-    print(f"Elapsed time: {end - start:.3f} seconds")

@@ -1,3 +1,5 @@
+mnist_cache_dir/
+cifar_cache_dir/
 cache_dir/
 
 output.txt

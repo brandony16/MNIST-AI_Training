@@ -1,13 +1,13 @@
 import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import OneHotEncoder
-from cacheMNIST import load_mnist_cached
+from cacheCIFAR import load_cifar_cached
 
 
-def load_and_preprocess_mnist(validation_split=0.2):
-    # Load MNIST dataset
-    mnist = load_mnist_cached()
-    data, labels = mnist["data"], mnist["target"]
+def load_and_preprocess_cifar(validation_split=0.2):
+    # Load CIFAR-10 dataset
+    cifar = load_cifar_cached()
+    data, labels = cifar["data"], cifar["target"]
 
     data = data.astype(np.float32)
     labels = labels.astype(int)
@@ -31,7 +31,6 @@ def load_and_preprocess_mnist(validation_split=0.2):
     y_test = np.asarray(y_test)
 
     # Num inputs in and num classifications
-    input = 28 * 28
+    input = 32 * 32 * 3
     output = 10
-
     return X_train, y_train, X_test, y_test, input, output

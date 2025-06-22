@@ -2,7 +2,7 @@
 from joblib import Memory
 from sklearn.datasets import fetch_openml
 
-memory = Memory(location='cache_dir', verbose=0)
+memory = Memory(location='mnist_cache_dir', verbose=0)
 
 @memory.cache
 def load_mnist_cached(version=1, as_frame=False):
