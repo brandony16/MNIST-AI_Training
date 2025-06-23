@@ -1,13 +1,22 @@
 import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import OneHotEncoder
-from cacheCIFAR import load_cifar_cached
+from DatasetFunctions.CacheMNIST import load_mnist_cached
+from DatasetFunctions.CacheCIFAR import load_cifar_cached
+from DatasetFunctions.ClassNames import CLASS_NAMES_BY_DATASET
 
 
-def load_and_preprocess_cifar(validation_split=0.2, one_hot=True):
-    # Load CIFAR-10 dataset
-    cifar = load_cifar_cached()
-    data, labels = cifar["data"], cifar["target"]
+def load_and_preprocess_data(validation_split=0.2, one_hot=True, use_dataset="MNIST"):
+    # Load dataset
+    match (use_dataset):
+        case "MNIST":
+            dataset = load_mnist_cached()
+        case "CIFAR":
+            dataset = load_cifar_cached()
+        case _:
+            dataset = load_mnist_cached()
+
+    data, labels = dataset["data"], dataset["target"]
 
     data = data.astype(np.float32)
     labels = labels.astype(int)
@@ -32,20 +41,15 @@ def load_and_preprocess_cifar(validation_split=0.2, one_hot=True):
     y_test = np.asarray(y_test)
 
     # Num inputs in and num classifications
-    input = 32 * 32 * 3
-    output = 10
-    return X_train, y_train, X_test, y_test, input, output, CIFAR_NAMES
+    input = X_train.shape[1]
+    output = len(set(np.argmax(y_test, axis=1)))
 
-
-CIFAR_NAMES = {
-    0: "Airplane",
-    1: "Automobile",
-    2: "Bird",
-    3: "Cat",
-    4: "Deer",
-    5: "Dog",
-    6: "Frog",
-    7: "Horse",
-    8: "Ship",
-    9: "Truck",
-}
+    return (
+        X_train,
+        y_train,
+        X_test,
+        y_test,
+        input,
+        output,
+        CLASS_NAMES_BY_DATASET[use_dataset],
+    )

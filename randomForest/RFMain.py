@@ -1,16 +1,16 @@
 from sklearn.metrics import accuracy_score
 from RandomForest import RandomForest
-from loadCIFAR import load_and_preprocess_cifar
-from loadMNIST import load_and_preprocess_mnist
+from DatasetFunctions.LoadData import load_and_preprocess_data
 from Visualization import show_all_metrics
 import pandas as pd
 import time
 
 
 def main():
+    print("Starting RF Progam")
     # Get relevant split and class name data
-    X_train, y_train, X_test, y_test, _, _, class_names = load_and_preprocess_mnist(
-        one_hot=False
+    X_train, y_train, X_test, y_test, _, _, class_names = load_and_preprocess_data(
+        one_hot=False, use_dataset="CIFAR"
     )
 
     sample_size = 10000
@@ -20,6 +20,8 @@ def main():
     # Initialize and train the RandomForestClassifier
     start = time.perf_counter()
     forest = RandomForest(num_trees=100, max_depth=15, max_features=56, n_jobs=4)
+
+    print("Building Forest")
     forest.fit(X_train_sample, y_train_sample)
 
     # Make predictions and evaluate the model

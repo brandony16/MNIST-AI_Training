@@ -1,8 +1,7 @@
 from KNN.KNNModel import knn_predict
 from sklearn.metrics import accuracy_score
 from sklearn.decomposition import PCA
-from loadCIFAR import load_and_preprocess_cifar
-from loadMNIST import load_and_preprocess_mnist
+from DatasetFunctions.LoadData import load_and_preprocess_data
 from Visualization import show_all_metrics
 import pandas as pd
 import sys
@@ -12,8 +11,8 @@ import time
 def main():
     start = time.perf_counter()
 
-    X_train, y_train, X_test, y_test, _, _, class_names = load_and_preprocess_cifar(
-        one_hot=False
+    X_train, y_train, X_test, y_test, _, _, class_names = load_and_preprocess_data(
+        one_hot=False, use_dataset="CIFAR"
     )
 
     # Lower dimensionality for speedup

@@ -1,9 +1,8 @@
 import numpy as np
 import cupy as cp
 import pandas as pd
-from loadMNIST import load_and_preprocess_mnist
-from loadCIFAR import load_and_preprocess_cifar
 from NeuralNetwork.NNModel import NeuralNetwork
+from DatasetFunctions.LoadData import load_and_preprocess_data
 from Visualization import show_all_metrics
 import time
 
@@ -13,10 +12,13 @@ def main():
 
     print("Starting Program")
     train_images, train_labels, test_images, test_labels, input, output, class_names = (
-        load_and_preprocess_cifar()
+        load_and_preprocess_data(
+            validation_split=0.2, one_hot=True, use_dataset="CIFAR"
+        )
     )
+
     # Define the neural network architecture
-    layer_sizes = [input, 512, 512, 512, 512, output]
+    layer_sizes = [input, 128, output]
 
     # relu and sigmoid activation functions available
     nn = NeuralNetwork(layer_sizes, "relu")
