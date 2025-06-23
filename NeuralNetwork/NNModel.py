@@ -1,17 +1,17 @@
-from FastNeuralNetwork.FastLayer import FastLayer
+from NeuralNetwork.DenseActivationLayer import DenseActivationLayer
 import cupy as cp
 from SoftmaxCELayer import SoftmaxCrossEntropyLayer
 from DenseLayer import DenseLayer
 
 
-class FastNeuralNetwork:
+class NeuralNetwork:
     def __init__(self, layer_sizes, activation="relu"):
         cp.random.seed(42)
         self.hidden_layers = []
         num_layers = len(layer_sizes)
         for i in range(num_layers - 2):
             self.hidden_layers.append(
-                FastLayer(layer_sizes[i], layer_sizes[i + 1], activation)
+                DenseActivationLayer(layer_sizes[i], layer_sizes[i + 1], activation)
             )
 
         # Final Dense (no activation) and CE layer for faster training

@@ -12,7 +12,7 @@ def _gini_from_sqsum(sum_sq: float, total: int) -> float:
 
 
 @njit(nogil=True, fastmath=True, cache=True)
-def fast_best_split(
+def best_split(
     data: np.ndarray, labels: np.ndarray, num_classes: int, max_features: int
 ):
     """

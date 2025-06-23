@@ -1,7 +1,7 @@
 import cupy as cp
 
 
-class FastLayer:
+class DenseActivationLayer:
     def __init__(self, inputSize, outputSize, activation="relu"):
         # Initializes a matrix of dimensons inputSize x outputSize of weights
         self.weights = cp.random.randn(inputSize, outputSize) * cp.sqrt(2.0 / inputSize)

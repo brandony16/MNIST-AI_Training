@@ -12,3 +12,4 @@ def load_cifar_cached(version=1, as_frame=False):
     Subsequent calls with the same arguments return the cached result.
     """
     return fetch_openml("CIFAR_10", version=version, as_frame=as_frame)
+

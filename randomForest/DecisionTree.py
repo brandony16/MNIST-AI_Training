@@ -1,111 +1,128 @@
 import numpy as np
-from typing import Optional
-from BestSplit import best_split
+from Split import best_split
+from numba import njit
+
+
+@njit(nogil=True, cache=True, fastmath=True)
+def _argmax_numba(counts):
+    best = 0
+    # start from 1 because we initialize best=0
+    for i in range(1, counts.shape[0]):
+        if counts[i] > counts[best]:
+            best = i
+    return best
 
 
 class DecisionTree:
     """
-    Class for a single tree of a random forest
+    A binary decision tree classifier using Gini impurity
+    and an optimized, Numba-accelerated split routine.
     """
 
     def __init__(
         self,
         max_depth: int = None,
         max_features: int = None,
-        min_samples_split: int = 2,
+        min_samples_leaf: int = 1,
     ):
         self.max_depth = max_depth or np.inf
         self.max_features = max_features
-        self.min_samples_split = min_samples_split
+        self.min_samples_leaf = min_samples_leaf
 
-    # Fits the tree to the data
-    def fit(self, X, y):
-        self.n_classes_ = len(set(y))
-        self.n_features_ = X.shape[1]
+    def fit(self, data: np.ndarray, labels: np.ndarray):
+        self.num_samples, self.num_features = data.shape
+        self.num_classes = int(labels.max() + 1)
+        self.tree = self._grow_tree(data, labels, depth=0)
 
-        self.tree_ = self._grow_tree(X, y, depth=0)
+        self._node_count = 0
+        self._count_nodes(self.tree)
+        N = self._node_count
 
-    def predict(self, X):
-        return np.array([self._predict(inputs) for inputs in X], dtype=int)
+        self._feat = np.empty(N, dtype=np.int32)
+        self._thr = np.empty(N, dtype=np.float32)
+        self._left = np.empty(N, dtype=np.int32)
+        self._right = np.empty(N, dtype=np.int32)
+        self._pred = np.empty(N, dtype=np.int32)
 
-    def _best_split(self, X, y):
-        return best_split(X, y, self.n_classes_, self.max_features)
+        # fill them in preorder
+        self._node_count = 0
+        self._export(self.tree)
 
-    # Recursively builds the decision tree
-    def _grow_tree(self, X, y, depth=0):
-        # Terminal break if pure or too small or too deep
+        return self
+
+    # Build tree recursively
+    def _grow_tree(self, data: np.ndarray, labels: np.ndarray, depth: int) -> dict:
+        num_entries = labels.size
+        counts = np.bincount(labels, minlength=self.num_classes)
+        prediction = _argmax_numba(counts)
+        probability = counts / num_entries
+        gini = 1.0 - np.sum(probability * probability)
+
+        # Terminal Condition
+        leaf_node = {
+            "feature": -1,
+            "threshold": 0.0,
+            "left": None,
+            "right": None,
+            "prediction": prediction,
+        }
         if (
-            len(y) < self.min_samples_split
-            or depth >= self.max_depth
-            or np.all(y == y[0])
+            depth >= self.max_depth
+            or num_entries <= self.min_samples_leaf
+            or gini == 0.0
         ):
-            counts = np.bincount(y, minlength=self.n_classes_)
-            pred = int(np.argmax(counts))
-            gini = 1.0 - np.sum((counts / len(y)) ** 2)
-            return Node(gini, len(y), counts, pred)
+            return leaf_node
 
-        # Parent counts & impurity
-        parent_counts = np.bincount(y, minlength=self.n_classes_)
-        parent_gini = 1.0 - np.sum((parent_counts / len(y)) ** 2)
-        idx, thr = self._best_split(X, y)
+        feature, threshold = best_split(
+            data, labels, self.num_classes, self.max_features
+        )
+        if feature < 0:
+            return leaf_node
 
-        # If no split found, make leaf
-        if idx is None:
-            pred = int(np.argmax(parent_counts))
-            return Node(parent_gini, len(y), parent_counts, pred)
+        mask_left = data[:, feature] < threshold
+        data_left, labels_left = data[mask_left], labels[mask_left]
+        data_right, labels_right = data[~mask_left], labels[~mask_left]
 
-        # Make new node and recursively grow tree
-        mask_left = X[:, idx] < thr
-        X_left, y_left = X[mask_left], y[mask_left]
-        X_right, y_right = X[~mask_left], y[~mask_left]
+        if (
+            labels_left.size < self.min_samples_leaf
+            or labels_right.size < self.min_samples_leaf
+        ):
+            return leaf_node
 
-        node = Node(parent_gini, len(y), parent_counts, int(np.argmax(parent_counts)))
-        node.feature_index = idx
-        node.threshold = thr
+        left_node = self._grow_tree(data_left, labels_left, depth + 1)
+        right_node = self._grow_tree(data_right, labels_right, depth + 1)
 
-        node.left = self._grow_tree(X_left, y_left, depth + 1)
-        node.right = self._grow_tree(X_right, y_right, depth + 1)
-        return node
+        return {
+            "feature": feature,
+            "threshold": threshold,
+            "left": left_node,
+            "right": right_node,
+            "prediction": prediction,
+        }
 
-    # Predicts for a simple input
-    def _predict(self, entry):
-        node = self.tree_
-        while node.left is not None:
-            if entry[node.feature_index] < node.threshold:
-                node = node.left
-            else:
-                node = node.right
-        return node.predicted_class
+    def _count_nodes(self, node):
+        self._node_count += 1
+        if node["feature"] >= 0:
+            self._count_nodes(node["left"])
+            self._count_nodes(node["right"])
 
+    def _export(self, node):
+        idx = self._node_count
+        self._node_count += 1
 
-class Node:
-    """
-    Basic node class that stores relevant data for each node of a decision tree
-    """
+        self._feat[idx] = node["feature"]
+        self._thr[idx] = node["threshold"]
+        self._pred[idx] = node["prediction"]
+        if node["feature"] < 0:
+            # leaf: point children at self to stop
+            self._left[idx] = idx
+            self._right[idx] = idx
+        else:
+            # reserve space for children
+            left_idx = self._node_count
+            self._left[idx] = left_idx
+            self._export(node["left"])
 
-    __slots__ = (
-        "gini",
-        "num_samples",
-        "num_samples_per_class",
-        "predicted_class",
-        "feature_index",
-        "threshold",
-        "left",
-        "right",
-    )
-
-    def __init__(
-        self,
-        gini: float,
-        num_samples: int,
-        num_samples_per_class: np.ndarray,
-        predicted_class: int,
-    ):
-        self.gini = gini
-        self.num_samples = num_samples
-        self.num_samples_per_class = num_samples_per_class
-        self.predicted_class = predicted_class
-        self.feature_index: Optional[int] = None
-        self.threshold: Optional[float] = None
-        self.left: Optional[Node] = None
-        self.right: Optional[Node] = None
+            right_idx = self._node_count
+            self._right[idx] = right_idx
+            self._export(node["right"])

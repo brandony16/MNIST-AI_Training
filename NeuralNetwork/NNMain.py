@@ -3,7 +3,7 @@ import cupy as cp
 import pandas as pd
 from loadMNIST import load_and_preprocess_mnist
 from loadCIFAR import load_and_preprocess_cifar
-from FastNeuralNetwork.FastNNModel import FastNeuralNetwork
+from NeuralNetwork.NNModel import NeuralNetwork
 from Visualization import show_all_metrics
 import time
 
@@ -12,12 +12,14 @@ def main():
     start = time.perf_counter()
 
     print("Starting Program")
-    train_images, train_labels, test_images, test_labels, input, output = load_and_preprocess_cifar()
+    train_images, train_labels, test_images, test_labels, input, output, class_names = (
+        load_and_preprocess_cifar()
+    )
     # Define the neural network architecture
-    layer_sizes = [input, 2048, 2048, 1024, 512, output]
+    layer_sizes = [input, 512, 512, 512, 512, output]
 
     # relu and sigmoid activation functions available
-    nn = FastNeuralNetwork(layer_sizes, "relu")
+    nn = NeuralNetwork(layer_sizes, "relu")
     print("Beginning Training")
     epochs = 25
     learning_rate = 0.001
@@ -76,7 +78,7 @@ def main():
     end = time.perf_counter()
     print(f"Elapsed time: {end - start:.3f} seconds")
 
-    show_all_metrics(test_labels_argmax, test_predictions, dataframe)
+    show_all_metrics(test_labels_argmax, test_predictions, dataframe, class_names)
 
 
 if __name__ == "__main__":

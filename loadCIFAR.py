@@ -4,7 +4,7 @@ from sklearn.preprocessing import OneHotEncoder
 from cacheCIFAR import load_cifar_cached
 
 
-def load_and_preprocess_cifar(validation_split=0.2):
+def load_and_preprocess_cifar(validation_split=0.2, one_hot=True):
     # Load CIFAR-10 dataset
     cifar = load_cifar_cached()
     data, labels = cifar["data"], cifar["target"]
@@ -16,8 +16,9 @@ def load_and_preprocess_cifar(validation_split=0.2):
     data = data / 255.0
 
     # One-hot encode the labels
-    encoder = OneHotEncoder(sparse_output=False)
-    labels = encoder.fit_transform(labels.reshape(-1, 1))
+    if one_hot:
+        encoder = OneHotEncoder(sparse_output=False)
+        labels = encoder.fit_transform(labels.reshape(-1, 1))
 
     # Split the data into training and validation sets
     X_train, X_test, y_train, y_test = train_test_split(
@@ -33,4 +34,18 @@ def load_and_preprocess_cifar(validation_split=0.2):
     # Num inputs in and num classifications
     input = 32 * 32 * 3
     output = 10
-    return X_train, y_train, X_test, y_test, input, output
+    return X_train, y_train, X_test, y_test, input, output, CIFAR_NAMES
+
+
+CIFAR_NAMES = {
+    0: "Airplane",
+    1: "Automobile",
+    2: "Bird",
+    3: "Cat",
+    4: "Deer",
+    5: "Dog",
+    6: "Frog",
+    7: "Horse",
+    8: "Ship",
+    9: "Truck",
+}

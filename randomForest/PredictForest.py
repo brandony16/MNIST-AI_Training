@@ -15,8 +15,8 @@ def _predict_forest_njit(feat, thr, left, right, pred, data_test, out, num_class
       - num_classes: number of classes
     """
 
-    n_trees, n_nodes = feat.shape
-    n_test, n_features = data_test.shape
+    n_trees = feat.shape[0]
+    n_test = data_test.shape[0]
 
     for j in prange(n_test):
         counts = np.zeros(num_classes, np.int32)

@@ -1,58 +1,51 @@
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import LabelEncoder
-from sklearn.metrics import accuracy_score, classification_report
+from sklearn.metrics import accuracy_score
 from RandomForest import RandomForest
-from cacheMNIST import load_mnist_cached
-import numpy as np
+from loadCIFAR import load_and_preprocess_cifar
+from loadMNIST import load_and_preprocess_mnist
+from Visualization import show_all_metrics
+import pandas as pd
 import time
 
 
 def main():
-    # Load the MNIST dataset
-    mnist = load_mnist_cached()
-    X, y = mnist["data"], mnist["target"]
-
-    # Split the data into training and testing sets
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=42
+    # Get relevant split and class name data
+    X_train, y_train, X_test, y_test, _, _, class_names = load_and_preprocess_mnist(
+        one_hot=False
     )
 
-    # Convert to numpy arrays
-    X_train = np.asarray(X_train)
-    X_test = np.asarray(X_test)
-    y_train = np.asarray(y_train)
-    y_test = np.asarray(y_test)
-
-    # Normalize pixel values to be between 0 and 1
-    X_train = X_train.astype("float32") / 255
-    X_test = X_test.astype("float32") / 255
-
-    # Convert labels to integers
-    label_encoder = LabelEncoder()
-    y_train = label_encoder.fit_transform(y_train)
-    y_test = label_encoder.transform(y_test)
-
-    sample_size = 1000
+    sample_size = 10000
     X_train_sample = X_train[:sample_size]
     y_train_sample = y_train[:sample_size]
 
     # Initialize and train the RandomForestClassifier
-    forest = RandomForest(n_trees=100, max_depth=15, n_jobs=-1, max_features=56)
+    start = time.perf_counter()
+    forest = RandomForest(num_trees=100, max_depth=15, max_features=56, n_jobs=4)
     forest.fit(X_train_sample, y_train_sample)
 
     # Make predictions and evaluate the model
     y_pred = forest.predict(X_test)
-    accuracy = accuracy_score(y_test, y_pred)
-    report = classification_report(y_test, y_pred, target_names=label_encoder.classes_)
+    end = time.perf_counter()
+    print(f"Elapsed time: {end - start:.3f} seconds")
 
-    # Print the results
-    print(f"Accuracy: {accuracy:.4f}")
-    print("Classification Report:")
-    print(report)
+    accuracy = accuracy_score(y_test, y_pred)
+    print(f"Accuracy, {accuracy * 100:.2f}%")
+
+    history = []
+    for i in range(10):
+        history.append(
+            {
+                "epoch": i,
+                "learning_rate": 0,
+                "train_loss": None,
+                "test_loss": None,
+                "train_acc": None,
+                "test_acc": accuracy,
+            }
+        )
+    df = pd.DataFrame(history)
+
+    show_all_metrics(y_test, y_pred, df, class_names)
 
 
 if __name__ == "__main__":
-    start = time.perf_counter()
     main()
-    end = time.perf_counter()
-    print(f"Elapsed time: {end - start:.3f} seconds")
