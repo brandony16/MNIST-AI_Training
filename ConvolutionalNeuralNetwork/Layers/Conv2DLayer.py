@@ -17,6 +17,9 @@ class Conv2D:
         self.w_flat = self.weights.reshape(self.c_out, -1)
         self.biases = cp.zeros((out_channels,), dtype=cp.float32)
 
+        self.dW = None
+        self.db = None
+
     def forward(self, inputs):
         N, _, height, width = inputs.shape
         K, S, P = self.k_size, self.s, self.p
