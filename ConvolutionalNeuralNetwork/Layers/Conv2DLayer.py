@@ -15,10 +15,10 @@ class Conv2D:
             out_channels, in_channels, kernel_size, kernel_size
         )
         self.w_flat = self.weights.reshape(self.c_out, -1)
-        self.biases = cp.zeros((out_channels,), dtype=cp.float32)
+        self.bias = cp.zeros((out_channels,), dtype=cp.float32)
 
-        self.dW = None
-        self.db = None
+        self.dW = cp.zeros_like(self.weights)
+        self.db = cp.zeros_like(self.bias)
 
     def forward(self, inputs):
         N, _, height, width = inputs.shape
@@ -58,7 +58,7 @@ class Conv2D:
         out = (
             # (N, C_out, H_out, W_out)
             out_flat.reshape(N, H_out, W_out, self.c_out).transpose(0, 3, 1, 2)
-            + self.biases[None, :, None, None]
+            + self.bias[None, :, None, None]
         )
 
         return out
@@ -77,8 +77,8 @@ class Conv2D:
         dW_batch = cp.matmul(d_out_flat, patches_T)
         dW_flat = dW_batch.sum(axis=0)
 
-        self.dW = dW_flat.reshape(self.c_out, self.c_in, K, K)
-        self.db = d_bias
+        self.dW[:] = dW_flat.reshape(self.c_out, self.c_in, K, K)
+        self.db[:] = d_bias
 
         dx_padded = cp.zeros_like(self.inputs_padded)
 

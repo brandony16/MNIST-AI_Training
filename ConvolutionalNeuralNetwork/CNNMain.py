@@ -26,7 +26,12 @@ def main():
         )
     )
     train_images = train_images.reshape(-1, 1, 28, 28).astype(cp.float32)
-    test_images = train_images.reshape(-1, 1, 28, 28).astype(cp.float32)
+    test_images = test_images.reshape(-1, 1, 28, 28).astype(cp.float32)
+
+    sample_size = 10000
+    train_images = train_images[:sample_size]
+    train_labels = train_labels[:sample_size]
+
 
     model = Sequential(
         [
@@ -47,7 +52,7 @@ def main():
     )
 
     print("Beginning Training")
-    epochs = 25
+    epochs = 5
     learning_rate = 0.001
     history = []
     optimizer = SGD(model.parameters(), lr=learning_rate)
@@ -55,7 +60,7 @@ def main():
         if epoch % 5 == 0 and epoch != 0:
             learning_rate *= 0.5
         if epoch != 0:
-            model.train(optimizer, train_images, train_labels, batch_size=64)
+            model.train(optimizer, train_images, train_labels, batch_size=256)
 
         # Train Data
         epoch_train_predictions = cp.asnumpy(model.predict(train_images))
@@ -64,17 +69,16 @@ def main():
         epoch_train_accuracy = np.mean(
             epoch_train_predictions == epoch_train_labels_argmax
         )
-        epoch_train_loss = model.layers[-1].loss
+        epoch_train_loss = model.forward(train_images, train_labels)
 
         # Test data
-        epoch_test_output = model.forward(test_images)
         epoch_test_predictions = cp.asnumpy(model.predict(test_images))
         epoch_test_labels_argmax = np.argmax(test_labels, axis=1)
 
         epoch_test_accuracy = np.mean(
             epoch_test_predictions == epoch_test_labels_argmax
         )
-        epoch_test_loss = model.cross_entropy(test_labels, epoch_test_output)
+        epoch_test_loss = model.forward(test_images, test_labels)
 
         history.append(
             {
