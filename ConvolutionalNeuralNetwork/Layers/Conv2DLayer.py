@@ -1,5 +1,6 @@
 import cupy as cp
 from cupy.lib.stride_tricks import sliding_window_view
+from numba import prange
 
 
 class Conv2D:
@@ -45,6 +46,7 @@ class Conv2D:
         _, _, H_out, W_out, _, _ = windows.shape
 
         # Flatten each patch for im2col
+        windows = windows.transpose(0, 1, 4, 5, 2, 3)
         im2col_batched = windows.reshape(N, self.c_in * K * K, H_out * W_out)
         self.im2col_batched = im2col_batched
 
@@ -82,7 +84,7 @@ class Conv2D:
 
         dx_padded = cp.zeros_like(self.inputs_padded)
 
-        for n in range(N):
+        for n in prange(N):
             d_out_flat = d_out[n].reshape(self.c_out, -1)  # (C_out, H_out*W_out)
 
             dx_cols = cp.dot(self.w_flat.T, d_out_flat)

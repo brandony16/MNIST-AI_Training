@@ -11,10 +11,12 @@ from ConvolutionalNeuralNetwork.Layers.PoolingLayer import MaxPool2D
 from ConvolutionalNeuralNetwork.Layers.SoftmaxCELayer import SoftmaxCrossEntropy
 from DatasetFunctions.LoadData import load_and_preprocess_data
 from Sequential import Sequential
-from SGD import SGD
+from SGD import use_optimizer
 from Visualization import show_all_metrics
 import time
+import sys
 
+import cupy.cuda.cudnn as cudnn
 
 def main():
     start = time.perf_counter()
@@ -25,13 +27,13 @@ def main():
             validation_split=0.2, one_hot=True, use_dataset="MNIST"
         )
     )
+    print("Data loaded")
     train_images = train_images.reshape(-1, 1, 28, 28).astype(cp.float32)
     test_images = test_images.reshape(-1, 1, 28, 28).astype(cp.float32)
 
     sample_size = 10000
     train_images = train_images[:sample_size]
     train_labels = train_labels[:sample_size]
-
 
     model = Sequential(
         [
@@ -51,11 +53,25 @@ def main():
         ]
     )
 
+    if len(sys.argv) > 1:
+        print("starting forward")
+        model.forward(train_images, train_labels)
+        print("starting backward")
+        model.backward()
+        print("backward finished")
+        t_forward = model.forward_times
+        t_backward = model.backward_times
+        print(t_forward)
+        print(t_backward)
+        print(f"Total forward: {np.sum(t_forward)}")
+        print(f"Total backward: {np.sum(t_backward)}")
+        return
+
     print("Beginning Training")
     epochs = 5
     learning_rate = 0.001
     history = []
-    optimizer = SGD(model.parameters(), lr=learning_rate)
+    optimizer = use_optimizer(model.parameters(), type="Adam", lr=learning_rate)
     for epoch in range(epochs + 1):
         if epoch % 5 == 0 and epoch != 0:
             learning_rate *= 0.5

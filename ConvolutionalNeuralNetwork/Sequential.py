@@ -1,4 +1,5 @@
 import cupy as cp
+import time
 
 
 class Sequential:
@@ -11,7 +12,9 @@ class Sequential:
         it can take both logits and targets y to return a scalar loss.
         """
         out = cp.asarray(x)
+        self.forward_times = []
         for layer in self.layers:
+            start = time.perf_counter()
             # if it's the final loss layer and y is provided:
             if (
                 layer.__class__.__name__ == "SoftmaxCrossEntropy"
@@ -21,6 +24,8 @@ class Sequential:
                 out = layer.forward(out, cp.asarray(y))
             else:
                 out = layer.forward(out)
+            end = time.perf_counter()
+            self.forward_times.append(end - start)
         return out
 
     def backward(self):
@@ -29,9 +34,13 @@ class Sequential:
         then propagate through all preceding layers in reverse.
         """
         grad = None
+        self.backward_times = []
         for layer in reversed(self.layers):
+            start = time.perf_counter()
             if hasattr(layer, "backward"):
                 grad = layer.backward(grad) if grad is not None else layer.backward()
+            end = time.perf_counter()
+            self.backward_times.append(end - start)
         return grad
 
     def parameters(self):
