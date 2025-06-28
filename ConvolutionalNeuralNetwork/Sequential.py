@@ -1,6 +1,5 @@
 import numpy as np
 import cupy as cp
-import time
 
 
 class Sequential:
@@ -15,7 +14,6 @@ class Sequential:
         out = cp.asarray(x)
         self.forward_times = []
         for layer in self.layers:
-            start = time.perf_counter()
             # if it's the final loss layer and y is provided:
             if (
                 layer.__class__.__name__ == "SoftmaxCrossEntropy"
@@ -25,8 +23,6 @@ class Sequential:
                 out = layer.forward(out, cp.asarray(y))
             else:
                 out = layer.forward(out)
-            end = time.perf_counter()
-            self.forward_times.append(end - start)
         return out
 
     def backward(self):
@@ -35,13 +31,9 @@ class Sequential:
         then propagate through all preceding layers in reverse.
         """
         grad = None
-        self.backward_times = []
         for layer in reversed(self.layers):
-            start = time.perf_counter()
             if hasattr(layer, "backward"):
                 grad = layer.backward(grad) if grad is not None else layer.backward()
-            end = time.perf_counter()
-            self.backward_times.append(end - start)
         return grad
 
     def parameters(self):
@@ -101,22 +93,34 @@ class Sequential:
         for i, layer in enumerate(self.layers):
             if hasattr(layer, "weights"):
                 params[f"layer{i}_W"] = layer.weights.get()
-                params[f"layer{i}_dW"] = layer.dW.get()
             if hasattr(layer, "bias"):
                 params[f"layer{i}_B"] = layer.bias.get()
-                params[f"layer{i}_db"] = layer.db.get()
 
         np.savez_compressed(path, **params)
         print(f"Saved model parameters to {path}.npz")
 
     @classmethod
-    def load(cls, path, *init_args, **init_kwargs):
-        model = cls(*init_args, **init_kwargs)
+    def load(cls, path, *layer_constructors):
+        """
+        Reconstruct a Sequential model from the given layer constructors
+        and load weights from `path + ".npz"`.
 
+        `layer_constructors` should be the exact same list you passed to __init__,
+        _not_ instances but callables, e.g.:
+            Conv2D, ReLU, MaxPool2D, ..., Dense, SoftmaxCrossEntropy
+        """
+        # 1) Build fresh layers
+        layers = [ctor() for ctor in layer_constructors]
+        model = cls(layers)
+
+        # 2) Load saved params
         data = np.load(path + ".npz")
-        for i, layer in enumerate(model.layers):
-            layer.w[:] = cp.asarray(data[f"layer{i}_W"])
-            layer.db[:] = cp.asarray(data[f"layer{i}_b"])
-
-        print(f"Loaded parameters from {path}.npz")
+        for idx, layer in enumerate(model.layers):
+            w_key = f"layer{idx}_W"
+            b_key = f"layer{idx}_B"
+            if w_key in data and b_key in data:
+                # assign back to GPU arrays
+                layer.weights[:] = cp.asarray(data[w_key])
+                layer.bias[:] = cp.asarray(data[b_key])
+        print(f"[Loaded] weights from {path}.npz")
         return model

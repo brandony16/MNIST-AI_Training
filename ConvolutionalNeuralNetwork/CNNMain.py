@@ -13,6 +13,7 @@ from DatasetFunctions.LoadData import load_and_preprocess_data
 from Sequential import Sequential
 from SGD import use_optimizer
 from Visualization import show_all_metrics
+from SavedWeights import LENET_PARAMETERS
 import time
 import sys
 
@@ -34,28 +35,12 @@ def main():
     train_images = train_images[:sample_size]
     train_labels = train_labels[:sample_size]
 
-    model = Sequential(
-        [
-            Conv2D(in_channels=1, out_channels=6, kernel_size=5, stride=1, padding=0),
-            ReLU(),
-            MaxPool2D(pool_size=2, stride=2),
-            Conv2D(in_channels=6, out_channels=16, kernel_size=5, stride=1, padding=0),
-            ReLU(),
-            MaxPool2D(pool_size=2, stride=2),
-            Flatten(),  # -> (N, 256)
-            Dense(256, 120),
-            ReLU(),
-            Dense(120, 84),
-            ReLU(),
-            Dense(84, 10),
-            SoftmaxCrossEntropy(),
-        ]
-    )
+    model = Sequential([ctor() for ctor in LENET_PARAMETERS])
 
-    # model.load("cnn_final", )
+    model = model.load("lenet", *LENET_PARAMETERS)
 
     print("Beginning Training")
-    epochs = 1
+    epochs = 25
     learning_rate = 0.001
     history = []
     optimizer = use_optimizer(model.parameters(), type="Adam", lr=learning_rate)
@@ -63,7 +48,7 @@ def main():
         if epoch % 5 == 0 and epoch != 0:
             learning_rate *= 0.5
         if epoch != 0:
-            model.train(optimizer, train_images, train_labels, batch_size=256)
+            model.train(optimizer, train_images, train_labels, batch_size=64)
 
         # Train Data
         epoch_train_predictions = cp.asnumpy(model.predict(train_images))
@@ -94,7 +79,7 @@ def main():
             }
         )
         print(f"Test Accuracy Epoch {epoch}: {epoch_test_accuracy * 100:.2f}%")
-        model.save("cnn_final")
+        model.save("lenet")
 
     dataframe = pd.DataFrame(history)
 
