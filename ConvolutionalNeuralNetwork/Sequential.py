@@ -1,3 +1,4 @@
+import numpy as np
 import cupy as cp
 import time
 
@@ -94,3 +95,28 @@ class Sequential:
             self.backward()
 
             optimizer.step()
+
+    def save(self, path):
+        params = {}
+        for i, layer in enumerate(self.layers):
+            if hasattr(layer, "weights"):
+                params[f"layer{i}_W"] = layer.weights.get()
+                params[f"layer{i}_dW"] = layer.dW.get()
+            if hasattr(layer, "bias"):
+                params[f"layer{i}_B"] = layer.bias.get()
+                params[f"layer{i}_db"] = layer.db.get()
+
+        np.savez_compressed(path, **params)
+        print(f"Saved model parameters to {path}.npz")
+
+    @classmethod
+    def load(cls, path, *init_args, **init_kwargs):
+        model = cls(*init_args, **init_kwargs)
+
+        data = np.load(path + ".npz")
+        for i, layer in enumerate(model.layers):
+            layer.w[:] = cp.asarray(data[f"layer{i}_W"])
+            layer.db[:] = cp.asarray(data[f"layer{i}_b"])
+
+        print(f"Loaded parameters from {path}.npz")
+        return model

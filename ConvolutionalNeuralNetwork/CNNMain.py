@@ -16,7 +16,6 @@ from Visualization import show_all_metrics
 import time
 import sys
 
-import cupy.cuda.cudnn as cudnn
 
 def main():
     start = time.perf_counter()
@@ -53,22 +52,10 @@ def main():
         ]
     )
 
-    if len(sys.argv) > 1:
-        print("starting forward")
-        model.forward(train_images, train_labels)
-        print("starting backward")
-        model.backward()
-        print("backward finished")
-        t_forward = model.forward_times
-        t_backward = model.backward_times
-        print(t_forward)
-        print(t_backward)
-        print(f"Total forward: {np.sum(t_forward)}")
-        print(f"Total backward: {np.sum(t_backward)}")
-        return
+    # model.load("cnn_final", )
 
     print("Beginning Training")
-    epochs = 5
+    epochs = 1
     learning_rate = 0.001
     history = []
     optimizer = use_optimizer(model.parameters(), type="Adam", lr=learning_rate)
@@ -107,11 +94,12 @@ def main():
             }
         )
         print(f"Test Accuracy Epoch {epoch}: {epoch_test_accuracy * 100:.2f}%")
+        model.save("cnn_final")
 
     dataframe = pd.DataFrame(history)
 
     print("Evaluating on test data:")
-    test_output = model.forward(test_images)
+    test_output = model.forward(test_images, test_labels)
     test_predictions = cp.asnumpy(model.predict(test_images))
     test_loss = model.cross_entropy(test_labels, test_output)
     print(f"Test Loss: {test_loss}")
