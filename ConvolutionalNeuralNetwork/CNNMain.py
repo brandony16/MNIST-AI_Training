@@ -15,7 +15,7 @@ from SGD import use_optimizer
 from Visualization import show_all_metrics
 from SavedWeights import LENET_PARAMETERS
 import time
-import sys
+import json
 
 
 def main():
@@ -31,24 +31,24 @@ def main():
     train_images = train_images.reshape(-1, 1, 28, 28).astype(cp.float32)
     test_images = test_images.reshape(-1, 1, 28, 28).astype(cp.float32)
 
-    sample_size = 10000
+    sample_size = -1
     train_images = train_images[:sample_size]
     train_labels = train_labels[:sample_size]
 
     model = Sequential([ctor() for ctor in LENET_PARAMETERS])
 
-    model = model.load("lenet", *LENET_PARAMETERS)
+    model.load("lenet", *LENET_PARAMETERS)
 
     print("Beginning Training")
-    epochs = 25
+    epochs = 12
     learning_rate = 0.001
     history = []
     optimizer = use_optimizer(model.parameters(), type="Adam", lr=learning_rate)
     for epoch in range(epochs + 1):
         if epoch % 5 == 0 and epoch != 0:
-            learning_rate *= 0.5
+            learning_rate *= 0.3
         if epoch != 0:
-            model.train(optimizer, train_images, train_labels, batch_size=64)
+            model.train(optimizer, train_images, train_labels, batch_size=96)
 
         # Train Data
         epoch_train_predictions = cp.asnumpy(model.predict(train_images))
@@ -72,8 +72,8 @@ def main():
             {
                 "epoch": epoch,
                 "learning_rate": learning_rate,
-                "train_loss": epoch_train_loss,
-                "test_loss": epoch_test_loss,
+                "train_loss": float(epoch_train_loss),
+                "test_loss": float(epoch_test_loss),
                 "train_acc": epoch_train_accuracy,
                 "test_acc": epoch_test_accuracy,
             }
@@ -81,12 +81,14 @@ def main():
         print(f"Test Accuracy Epoch {epoch}: {epoch_test_accuracy * 100:.2f}%")
         model.save("lenet")
 
+    with open("MNIST_CNN.json", "w") as f:
+        json.dump(history, f, indent=4)
+
     dataframe = pd.DataFrame(history)
 
     print("Evaluating on test data:")
-    test_output = model.forward(test_images, test_labels)
+    test_loss = model.forward(test_images, test_labels)
     test_predictions = cp.asnumpy(model.predict(test_images))
-    test_loss = model.cross_entropy(test_labels, test_output)
     print(f"Test Loss: {test_loss}")
 
     # Calculate accuracy
