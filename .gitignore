@@ -3,3 +3,6 @@ cifar_cache_dir/
 cache_dir/
 
 output.txt
+
+*.npz
+*.json

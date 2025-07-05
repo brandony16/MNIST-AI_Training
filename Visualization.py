@@ -23,6 +23,8 @@ def build_plot_curves_fig(dataframe):
     plt.title("Accuracy vs. Epoch")
     plt.legend()
 
+    plt.show()
+
 
 def build_confusion_matrix_fig(labels, predictions):
     confMat = confusion_matrix(labels, predictions, normalize="true")
@@ -34,9 +36,17 @@ def build_confusion_matrix_fig(labels, predictions):
     plt.ylabel("Actual")
     plt.xticks(np.arange(confMat.shape[1]))
     plt.yticks(np.arange(confMat.shape[0]))
+    plt.show()
 
 
 def build_metrics_fig(labels, predictions):
+    """
+    Builds a bar graph of precision, recall, and f1 score for every class.
+
+    Args:
+        labels: the correct labels for the data
+        predictions: the models predictions for the labels
+    """
     precision = precision_score(labels, predictions, average=None)
     recall = recall_score(labels, predictions, average=None)
     f1 = f1_score(labels, predictions, average=None)
@@ -50,9 +60,23 @@ def build_metrics_fig(labels, predictions):
     plt.xlabel("Class")
     plt.ylabel("Score")
     plt.title("Precision / Recall / F1 by Class")
+    plt.show()
 
 
 def show_all_metrics(labels, predictions, dataframe, class_map):
+    """
+    Function that builds and shows all graphs in one window using matplotlib.
+    Top Left: Loss v Epoch
+    Top Right: Accuracy v Epoch
+    Bottom Left: Confusion matrix heatmap
+    Bottom Right: Precision, recall, & F1 score for every class
+
+    Args:
+        labels: the correct labels for the data
+        predictions: the models predictions for the labels
+        dataframe: the df with history values
+        class_map: mapping of numerical labels to words (8 -> airplane)
+    """
     fig, axes = plt.subplots(2, 2, figsize=(10, 8))
 
     # Loss

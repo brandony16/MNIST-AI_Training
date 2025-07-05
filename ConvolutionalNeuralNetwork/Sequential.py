@@ -97,7 +97,6 @@ class Sequential:
                 params[f"layer{i}_B"] = layer.bias.get()
 
         np.savez_compressed(path, **params)
-        print(f"Saved model parameters to {path}.npz")
 
     @classmethod
     def load(cls, path, *layer_constructors):

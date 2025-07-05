@@ -24,6 +24,9 @@ class SGD:
         for _, grad in self.parameters:
             grad.fill(0.0)
 
+    def set_lr(self, lr):
+        self.lr = lr
+
 
 class Adam:
     def __init__(
@@ -55,3 +58,6 @@ class Adam:
     def zero_grad(self):
         for _, grad in self.parameters:
             grad.fill(0.0)
+
+    def set_lr(self, lr):
+        self.lr = lr

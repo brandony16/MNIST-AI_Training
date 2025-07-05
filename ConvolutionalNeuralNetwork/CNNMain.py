@@ -1,105 +1,187 @@
+import argparse
+import json
+import logging
+import time
+from contextlib import contextmanager
+from pathlib import Path
+
 import numpy as np
-import cupy as cp
 import pandas as pd
-from ConvolutionalNeuralNetwork.Layers.Conv2DLayer import Conv2D
-from ConvolutionalNeuralNetwork.Layers.BatchNormLayer import BatchNorm2D
-from ConvolutionalNeuralNetwork.Layers.ActivationLayers import ReLU
-from ConvolutionalNeuralNetwork.Layers.DenseLayer import Dense
-from ConvolutionalNeuralNetwork.Layers.DropoutLayer import Dropout
-from ConvolutionalNeuralNetwork.Layers.FlattenLayer import Flatten
-from ConvolutionalNeuralNetwork.Layers.PoolingLayer import MaxPool2D
-from ConvolutionalNeuralNetwork.Layers.SoftmaxCELayer import SoftmaxCrossEntropy
-from DatasetFunctions.LoadData import load_and_preprocess_data
+import cupy as cp
+
+from DatasetFunctions.LoadData import load_cnn_data
 from Sequential import Sequential
 from SGD import use_optimizer
 from Visualization import show_all_metrics
-from SavedWeights import LENET_PARAMETERS
-import time
-import json
+from ConvolutionalNeuralNetwork.Architectures import (
+    MNIST_PARAMETERS,
+    CIFAR_PARAMETERS,
+)
 
 
-def main():
+# -----------------------------------------------------------------------------
+# Helpers
+# -----------------------------------------------------------------------------
+@contextmanager
+def timer(name: str):
     start = time.perf_counter()
+    yield
+    end = time.perf_counter()
+    logging.info(f"{name} took {end - start:.3f}s")
 
-    print("Starting Program")
-    train_images, train_labels, test_images, test_labels, _, _, class_names = (
-        load_and_preprocess_data(
-            validation_split=0.2, one_hot=True, use_dataset="MNIST"
-        )
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Train and evaluate LeNet on MNIST")
+    parser.add_argument("--dataset", default="MNIST", help="Which dataset to load")
+    parser.add_argument(
+        "--valid-split", type=float, default=0.2, help="Validation split fraction"
     )
-    print("Data loaded")
-    train_images = train_images.reshape(-1, 1, 28, 28).astype(cp.float32)
-    test_images = test_images.reshape(-1, 1, 28, 28).astype(cp.float32)
+    parser.add_argument(
+        "--batch-size", type=int, default=96, help="Training batch size"
+    )
+    parser.add_argument(
+        "--epochs", type=int, default=12, help="Number of training epochs"
+    )
+    parser.add_argument("--lr", type=float, default=1e-3, help="Initial learning rate")
+    parser.add_argument(
+        "--lr-drop-every", type=int, default=5, help="Epoch interval to drop LR"
+    )
+    parser.add_argument(
+        "--lr-drop-factor", type=float, default=0.3, help="Factor to multiply LR by"
+    )
+    parser.add_argument(
+        "--sample-size",
+        type=int,
+        default=-1,
+        help="Subset size of training data (-1=all)",
+    )
+    parser.add_argument(
+        "--model-name", default=None, help="Name for saving/loading weights"
+    )
+    parser.add_argument(
+        "--out-history", default="training_history.json", help="Where to dump history"
+    )
+    return parser.parse_args()
 
-    sample_size = -1
-    train_images = train_images[:sample_size]
-    train_labels = train_labels[:sample_size]
 
-    model = Sequential([ctor() for ctor in LENET_PARAMETERS])
+def load_data(dataset: str, valid_split: float, sample_size: int):
+    logging.info("Loading and preprocessing data")
+    X_train, y_train, X_test, y_test, _, _, class_names = load_cnn_data(
+        validation_split=valid_split, one_hot=True, use_dataset=dataset
+    )
 
-    model.load("lenet", *LENET_PARAMETERS)
+    # Make cupy arrays and get sample size
+    X_train = X_train.astype(cp.float32)[:sample_size]
+    y_train = y_train[:sample_size]
+    X_test = X_test.astype(cp.float32)
 
-    print("Beginning Training")
-    epochs = 12
-    learning_rate = 0.001
+    return X_train, y_train, X_test, y_test, class_names
+
+
+def build_model(model_name: str, dataset: str):
+    logging.info("Building model")
+
+    if dataset == "CIFAR":
+        params = CIFAR_PARAMETERS
+    else:
+        params = MNIST_PARAMETERS
+    model = Sequential([ctor() for ctor in params])
+
+    # check for saved weights
+    if model_name:
+        weights_path = Path(f"{model_name}.npz")
+        if weights_path.exists():
+            logging.info(f"Loading weights from {weights_path}")
+            model.load(model_name, *params)
+    return model
+
+
+def adjust_learning_rate(
+    epoch: int, base_lr: float, drop_every: int, drop_factor: float
+) -> float:
+    """Reduce LR by drop_factor at each drop_every interval (excluding epoch 0)."""
+    if epoch != 0 and epoch % drop_every == 0:
+        return base_lr * drop_factor
+    return base_lr
+
+
+def compute_metrics(model, X, y_onehot):
+    """Returns (loss, accuracy)."""
+    preds = cp.asnumpy(model.predict(X))
+    labels = np.argmax(y_onehot, axis=1)
+    loss = float(model.forward(X, y_onehot))
+    acc = np.mean(preds == labels)
+    return loss, acc, labels, preds
+
+
+def train_and_evaluate(args, model, optimizer, X_train, y_train, X_test, y_test):
     history = []
-    optimizer = use_optimizer(model.parameters(), type="Adam", lr=learning_rate)
-    for epoch in range(epochs + 1):
-        if epoch % 5 == 0 and epoch != 0:
-            learning_rate *= 0.3
-        if epoch != 0:
-            model.train(optimizer, train_images, train_labels, batch_size=96)
+    lr = args.lr
 
-        # Train Data
-        epoch_train_predictions = cp.asnumpy(model.predict(train_images))
-        epoch_train_labels_argmax = np.argmax(train_labels, axis=1)
+    for epoch in range(args.epochs + 1):
+        lr = adjust_learning_rate(epoch, lr, args.lr_drop_every, args.lr_drop_factor)
+        optimizer.set_lr(lr)
 
-        epoch_train_accuracy = np.mean(
-            epoch_train_predictions == epoch_train_labels_argmax
-        )
-        epoch_train_loss = model.forward(train_images, train_labels)
+        if epoch > 0:
+            model.train(optimizer, X_train, y_train, batch_size=args.batch_size)
 
-        # Test data
-        epoch_test_predictions = cp.asnumpy(model.predict(test_images))
-        epoch_test_labels_argmax = np.argmax(test_labels, axis=1)
-
-        epoch_test_accuracy = np.mean(
-            epoch_test_predictions == epoch_test_labels_argmax
-        )
-        epoch_test_loss = model.forward(test_images, test_labels)
+        train_loss, train_acc, _, _ = compute_metrics(model, X_train, y_train)
+        test_loss, test_acc, _, _ = compute_metrics(model, X_test, y_test)
 
         history.append(
             {
                 "epoch": epoch,
-                "learning_rate": learning_rate,
-                "train_loss": float(epoch_train_loss),
-                "test_loss": float(epoch_test_loss),
-                "train_acc": epoch_train_accuracy,
-                "test_acc": epoch_test_accuracy,
+                "learning_rate": lr,
+                "train_loss": train_loss,
+                "train_acc": train_acc,
+                "test_loss": test_loss,
+                "test_acc": test_acc,
             }
         )
-        print(f"Test Accuracy Epoch {epoch}: {epoch_test_accuracy * 100:.2f}%")
-        model.save("lenet")
 
-    with open("MNIST_CNN.json", "w") as f:
-        json.dump(history, f, indent=4)
+        logging.info(f"Epoch {epoch}: test_acc={test_acc*100:.2f}%")
 
-    dataframe = pd.DataFrame(history)
+        if args.model_name:
+            model.save(args.model_name)
 
-    print("Evaluating on test data:")
-    test_loss = model.forward(test_images, test_labels)
-    test_predictions = cp.asnumpy(model.predict(test_images))
-    print(f"Test Loss: {test_loss}")
+    return history
 
-    # Calculate accuracy
-    test_labels_argmax = np.argmax(test_labels, axis=1)
-    accuracy = np.mean(test_predictions == test_labels_argmax)
-    print(f"Test Accuracy: {accuracy * 100:.2f}%")
 
-    end = time.perf_counter()
-    print(f"Elapsed time: {end - start:.3f} seconds")
+def evaluate_final(model, X_test, y_test, class_names, history):
+    logging.info("Final evaluation on test set")
+    test_loss, test_acc, labels, preds = compute_metrics(model, X_test, y_test)
+    logging.info(f"Test Loss: {test_loss:.4f}, Test Accuracy: {test_acc*100:.2f}%")
 
-    show_all_metrics(test_labels_argmax, test_predictions, dataframe, class_names)
+    df_history = pd.DataFrame(history)
+    show_all_metrics(labels, preds, df_history, class_names)
+
+
+# -----------------------------------------------------------------------------
+# Main
+# -----------------------------------------------------------------------------
+def main():
+    logging.basicConfig(
+        level=logging.INFO, format="%(asctime)s %(levelname)s: %(message)s"
+    )
+    args = parse_args()
+
+    with timer("Total run"):
+        X_train, y_train, X_test, y_test, class_names = load_data(
+            args.dataset, args.valid_split, args.sample_size
+        )
+
+        model = build_model(args.model_name, args.dataset)
+        optimizer = use_optimizer(model.parameters(), type="Adam", lr=args.lr)
+
+        history = train_and_evaluate(
+            args, model, optimizer, X_train, y_train, X_test, y_test
+        )
+
+        # Save history to JSON
+        with open(args.out_history, "w") as f:
+            json.dump(history, f, indent=4)
+
+    evaluate_final(model, X_test, y_test, class_names, history)
 
 
 if __name__ == "__main__":
