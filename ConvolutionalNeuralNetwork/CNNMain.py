@@ -31,7 +31,7 @@ def timer(name: str):
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Train and evaluate LeNet on MNIST")
+    parser = argparse.ArgumentParser(description="Train and evaluate a CNN on MNIST or CIFAR")
     parser.add_argument("--dataset", default="MNIST", help="Which dataset to load")
     parser.add_argument(
         "--valid-split", type=float, default=0.2, help="Validation split fraction"
@@ -105,13 +105,26 @@ def adjust_learning_rate(
     return base_lr
 
 
-def compute_metrics(model, X, y_onehot):
+def compute_metrics(model, X, y_onehot, batch_size=256):
     """Returns (loss, accuracy)."""
-    preds = cp.asnumpy(model.predict(X))
+    num_samples = X.shape[0]
+    total_loss = 0.0
     labels = np.argmax(y_onehot, axis=1)
-    loss = float(model.forward(X, y_onehot))
+
+    for i in range(0, num_samples, batch_size):
+        X_batch = X[i : i + batch_size]
+        y_batch = y_onehot[i : i + batch_size]
+
+        # Forward pass
+        batch_loss = model.forward(X_batch, y_batch)
+        total_loss += float(batch_loss) * X_batch.shape[0]  # weighted sum
+
+    # Predict is already batched in Sequential 
+    preds = cp.asnumpy(model.predict(X))
     acc = np.mean(preds == labels)
-    return loss, acc, labels, preds
+
+    avg_loss = total_loss / num_samples
+    return avg_loss, acc, labels, preds
 
 
 def train_and_evaluate(args, model, optimizer, X_train, y_train, X_test, y_test):
@@ -139,7 +152,7 @@ def train_and_evaluate(args, model, optimizer, X_train, y_train, X_test, y_test)
             }
         )
 
-        logging.info(f"Epoch {epoch}: test_acc={test_acc*100:.2f}%")
+        logging.info(f"Epoch {epoch}: \ntest_acc={test_acc*100:.2f}%, \ntrain_acc={train_acc*100:.2f}%")
 
         if args.model_name:
             model.save(args.model_name)
@@ -169,6 +182,10 @@ def main():
         X_train, y_train, X_test, y_test, class_names = load_data(
             args.dataset, args.valid_split, args.sample_size
         )
+        X_train = X_train[:args.sample_size]
+        y_train = y_train[:args.sample_size]
+        X_test = X_test[:args.sample_size]
+        y_test = y_test[:args.sample_size]
 
         model = build_model(args.model_name, args.dataset)
         optimizer = use_optimizer(model.parameters(), type="Adam", lr=args.lr)

@@ -14,12 +14,15 @@ class Conv2D:
 
         self.weights = cp.random.randn(
             out_channels, in_channels, kernel_size, kernel_size
-        )
-        self.w_flat = self.weights.reshape(self.c_out, -1)
+        ) * cp.sqrt(2 / (in_channels * kernel_size ^ 2))
         self.bias = cp.zeros((out_channels,), dtype=cp.float32)
 
         self.dW = cp.zeros_like(self.weights)
         self.db = cp.zeros_like(self.bias)
+    
+    @property
+    def w_flat(self):
+        return self.weights.reshape(self.c_out, -1)
 
     def forward(self, inputs):
         N, _, height, width = inputs.shape

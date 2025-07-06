@@ -15,12 +15,9 @@ class Sequential:
         self.forward_times = []
         for layer in self.layers:
             # if it's the final loss layer and y is provided:
-            if (
-                layer.__class__.__name__ == "SoftmaxCrossEntropy"
-                and hasattr(layer, "forward")
-                and y is not None
-            ):
-                out = layer.forward(out, cp.asarray(y))
+            if layer.__class__.__name__ == "SoftmaxCrossEntropy":
+                if y is not None:
+                    out = layer.forward(out, cp.asarray(y))
             else:
                 out = layer.forward(out)
         return out
@@ -34,6 +31,7 @@ class Sequential:
         for layer in reversed(self.layers):
             if hasattr(layer, "backward"):
                 grad = layer.backward(grad) if grad is not None else layer.backward()
+
         return grad
 
     def parameters(self):
