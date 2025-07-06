@@ -31,7 +31,9 @@ def timer(name: str):
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Train and evaluate a CNN on MNIST or CIFAR")
+    parser = argparse.ArgumentParser(
+        description="Train and evaluate a CNN on MNIST or CIFAR"
+    )
     parser.add_argument("--dataset", default="MNIST", help="Which dataset to load")
     parser.add_argument(
         "--valid-split", type=float, default=0.2, help="Validation split fraction"
@@ -47,7 +49,7 @@ def parse_args():
         "--lr-drop-every", type=int, default=5, help="Epoch interval to drop LR"
     )
     parser.add_argument(
-        "--lr-drop-factor", type=float, default=0.3, help="Factor to multiply LR by"
+        "--lr-drop-factor", type=float, default=0.1, help="Factor to multiply LR by"
     )
     parser.add_argument(
         "--sample-size",
@@ -62,6 +64,21 @@ def parse_args():
         "--out-history", default="training_history.json", help="Where to dump history"
     )
     return parser.parse_args()
+
+
+def augment_batch(X, max_shift=2):
+    N = X.shape[0]
+    X_aug = X.copy()
+
+    # Random shifts
+    # generate per‑image shifts in [-max_shift, max_shift]
+    shifts = cp.random.randint(-max_shift, max_shift + 1, size=(N, 2))
+    for i in range(N):
+        dy, dx = int(shifts[i, 0]), int(shifts[i, 1])
+        # roll along H axis then W axis
+        X_aug[i] = cp.roll(cp.roll(X_aug[i], dy, axis=1), dx, axis=2)
+
+    return X_aug
 
 
 def load_data(dataset: str, valid_split: float, sample_size: int):
@@ -119,7 +136,7 @@ def compute_metrics(model, X, y_onehot, batch_size=256):
         batch_loss = model.forward(X_batch, y_batch)
         total_loss += float(batch_loss) * X_batch.shape[0]  # weighted sum
 
-    # Predict is already batched in Sequential 
+    # Predict is already batched in Sequential
     preds = cp.asnumpy(model.predict(X))
     acc = np.mean(preds == labels)
 
@@ -136,7 +153,13 @@ def train_and_evaluate(args, model, optimizer, X_train, y_train, X_test, y_test)
         optimizer.set_lr(lr)
 
         if epoch > 0:
-            model.train(optimizer, X_train, y_train, batch_size=args.batch_size)
+            model.train(
+                optimizer,
+                X_train,
+                y_train,
+                batch_size=args.batch_size,
+                augment_fn=augment_batch,
+            )
 
         train_loss, train_acc, _, _ = compute_metrics(model, X_train, y_train)
         test_loss, test_acc, _, _ = compute_metrics(model, X_test, y_test)
@@ -152,7 +175,9 @@ def train_and_evaluate(args, model, optimizer, X_train, y_train, X_test, y_test)
             }
         )
 
-        logging.info(f"Epoch {epoch}: \ntest_acc={test_acc*100:.2f}%, \ntrain_acc={train_acc*100:.2f}%")
+        logging.info(
+            f"Epoch {epoch}: test_acc={test_acc*100:.2f}%, train_acc={train_acc*100:.2f}%"
+        )
 
         if args.model_name:
             model.save(args.model_name)
@@ -182,10 +207,6 @@ def main():
         X_train, y_train, X_test, y_test, class_names = load_data(
             args.dataset, args.valid_split, args.sample_size
         )
-        X_train = X_train[:args.sample_size]
-        y_train = y_train[:args.sample_size]
-        X_test = X_test[:args.sample_size]
-        y_test = y_test[:args.sample_size]
 
         model = build_model(args.model_name, args.dataset)
         optimizer = use_optimizer(model.parameters(), type="Adam", lr=args.lr)

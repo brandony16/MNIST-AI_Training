@@ -65,7 +65,9 @@ class Sequential:
 
         return cp.concatenate(all_preds, axis=0)
 
-    def train(self, optimizer, train_data, train_labels, batch_size=64):
+    def train(
+        self, optimizer, train_data, train_labels, batch_size=64, augment_fn=None
+    ):
         N = train_data.shape[0]
 
         train_data = cp.asarray(train_data)
@@ -76,6 +78,9 @@ class Sequential:
             idx = perm[i : i + batch_size]
             data_batch = train_data[idx]
             label_batch = train_labels[idx]
+
+            if augment_fn is not None:
+                data_batch = augment_fn(data_batch, max_shift=2)
 
             loss = self.forward(data_batch, label_batch)
 

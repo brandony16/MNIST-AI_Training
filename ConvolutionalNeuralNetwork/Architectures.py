@@ -8,66 +8,56 @@ from ConvolutionalNeuralNetwork.Layers.PoolingLayer import MaxPool2D
 from ConvolutionalNeuralNetwork.Layers.SoftmaxCELayer import SoftmaxCrossEntropy
 
 MNIST_PARAMETERS = [
-    # Conv block 1
-    lambda: Conv2D(in_channels=1, out_channels=6, kernel_size=5, stride=1, padding=0),
-    lambda: BatchNorm2D(num_features=6),
+    # Conv block 1: 1→32, two 3×3 convs
+    lambda: Conv2D(in_channels=1, out_channels=32, kernel_size=3, padding=1),
     ReLU,
-    lambda: MaxPool2D(pool_size=2, stride=2),
-    # Conv block 2
-    lambda: Conv2D(in_channels=6, out_channels=16, kernel_size=5, stride=1, padding=0),
-    lambda: BatchNorm2D(num_features=16),
+    lambda: Conv2D(in_channels=32, out_channels=32, kernel_size=3, padding=1),
     ReLU,
-    lambda: MaxPool2D(pool_size=2, stride=2),
-    # Flatten
+    lambda: MaxPool2D(pool_size=2, stride=2),  # → 32×14×14
+    # Conv block 2: 32→64, two 3×3 convs
+    lambda: Conv2D(in_channels=32, out_channels=64, kernel_size=3, padding=1),
+    ReLU,
+    lambda: Conv2D(in_channels=64, out_channels=64, kernel_size=3, padding=1),
+    ReLU,
+    lambda: MaxPool2D(pool_size=2, stride=2),  # → 64×7×7
+    # Conv block 3: 64→128
+    lambda: Conv2D(in_channels=64, out_channels=128, kernel_size=3, padding=1),
+    ReLU,
+    lambda: MaxPool2D(pool_size=2, stride=2),  # → 128×3×3
     Flatten,
     # FC block 1
-    lambda: Dense(16 * 4 * 4, 120),
+    lambda: Dense(128 * 3 * 3, 128),
     ReLU,
     lambda: Dropout(0.2),
     # FC block 2
-    lambda: Dense(120, 84),
+    lambda: Dense(128, 64),
     ReLU,
     lambda: Dropout(0.2),
     # Classifier
-    lambda: Dense(84, 10),
+    lambda: Dense(64, 10),
     SoftmaxCrossEntropy,
 ]
 
 CIFAR_PARAMETERS = [
-    # # Conv block 1
-    # lambda: Conv2D(in_channels=3, out_channels=16, kernel_size=3, stride=1, padding=1),
-    # # lambda: BatchNorm2D(16),
-    # ReLU,
-    # lambda: MaxPool2D(pool_size=2, stride=2),
-    # # Conv block 2
-    # lambda: Conv2D(in_channels=16, out_channels=64, kernel_size=3, stride=1, padding=1),
-    # # lambda: BatchNorm2D(32),
-    # ReLU,
-    # lambda: MaxPool2D(pool_size=2, stride=2),
-    # # Flatten and FCs
-    # Flatten,
-    # lambda: Dense(64 * 8 * 8, 512),
-    # ReLU,
-    # # lambda: Dropout(0.5),
-    # lambda: Dense(512, 256),
-    # ReLU,
-    # # lambda: Dropout(0.5),
-    # lambda: Dense(256, 128),
-    # ReLU,
-    # # lambda: Dropout(0.5),
-    # # Final classification layer
-    # lambda: Dense(128, 10),
-    # SoftmaxCrossEntropy,
     # Conv block 1
     lambda: Conv2D(in_channels=3, out_channels=32, kernel_size=3, stride=1, padding=1),
+    lambda: BatchNorm2D(32),
     ReLU,
-    lambda: MaxPool2D(2, 2),
+    lambda: MaxPool2D(pool_size=2, stride=2),
+    # Conv block 2
     lambda: Conv2D(in_channels=32, out_channels=64, kernel_size=3, stride=1, padding=1),
+    lambda: BatchNorm2D(64),
     ReLU,
-    lambda: MaxPool2D(2, 2),
+    lambda: MaxPool2D(pool_size=2, stride=2),
+    # Flatten and FCs
     Flatten,
-    lambda: Dense(64 * 8 * 8, 128),
+    lambda: Dense(64 * 8 * 8, 1024),
     ReLU,
-    lambda: Dense(128, 10),
+    lambda: Dropout(0.2),
+    lambda: Dense(1024, 512),
+    ReLU,
+    lambda: Dropout(0.2),
+    # Final classification layer
+    lambda: Dense(512, 10),
     SoftmaxCrossEntropy,
 ]

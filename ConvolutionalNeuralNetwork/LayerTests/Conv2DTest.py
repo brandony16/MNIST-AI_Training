@@ -59,7 +59,6 @@ class TestConv2D(unittest.TestCase):
         W0 = np.random.randn(2, 1, 3, 3).astype(np.float32) * 0.1
         b0 = np.random.randn(2).astype(np.float32) * 0.1
         self.layer.weights = cp.array(W0)
-        self.layer.w_flat = self.layer.weights.reshape(2, -1)
         self.layer.bias = cp.array(b0)
 
     def test_forward(self):
@@ -97,7 +96,6 @@ class TestConv2D(unittest.TestCase):
         def loss(W_mod):
             # set perturbed weights
             self.layer.weights = cp.array(W_mod)
-            self.layer.w_flat = self.layer.weights.reshape(2, -1)
             out = self.layer.forward(self.x_gpu)
             return float(cp.asnumpy(out.sum()))
 
@@ -111,7 +109,6 @@ class TestConv2D(unittest.TestCase):
         # reset weights
         W_cpu[idx] = orig
         self.layer.weights = cp.array(W_cpu)
-        self.layer.w_flat = self.layer.weights.reshape(2, -1)
 
         # compute analytical gradient
         y = self.layer.forward(self.x_gpu)

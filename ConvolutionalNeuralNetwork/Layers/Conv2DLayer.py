@@ -19,7 +19,7 @@ class Conv2D:
 
         self.dW = cp.zeros_like(self.weights)
         self.db = cp.zeros_like(self.bias)
-    
+
     @property
     def w_flat(self):
         return self.weights.reshape(self.c_out, -1)
@@ -71,6 +71,7 @@ class Conv2D:
     def backward(self, d_out):
         N = d_out.shape[0]
         K, S, P = self.k_size, self.s, self.p
+        H_out, W_out = self.out_height, self.out_width
 
         # d_out is shape (N, C_out, H_out, W_out)
         # sum over batch and spatial dims
@@ -85,20 +86,27 @@ class Conv2D:
         self.dW[:] = dW_flat.reshape(self.c_out, self.c_in, K, K)
         self.db[:] = d_bias
 
-        dx_padded = cp.zeros_like(self.inputs_padded)
+        # compute dx_cols: shape (N, C_in, K, K, H_out, W_out)
+        d_out_flat = d_out.reshape(N, self.c_out, -1)  # (N, Cout, Hout*Wout)
+        dx_cols_flat = (
+            d_out_flat.transpose(0, 2, 1) @ self.w_flat
+        )  # (N, Hout*Wout, Cin*K*K)
+        dx_cols = dx_cols_flat.reshape(N, H_out, W_out, self.c_in, K, K)
+        # now dx_cols is (N, Hout, Wout, Cin, K, K)
 
-        for n in prange(N):
-            d_out_flat = d_out[n].reshape(self.c_out, -1)  # (C_out, H_out*W_out)
+        # prepare padded gradient
+        dx_padded = cp.zeros_like(self.inputs_padded)  # (N, Cin, H+2P, W+2P)
 
-            dx_cols = cp.dot(self.w_flat.T, d_out_flat)
-            dx_cols = dx_cols.reshape(self.c_in, K, K, self.out_height, self.out_width)
+        # scatter each K×K patch back into dx_padded using only two loops
+        for i in range(H_out):
+            for j in range(W_out):
+                y0, x0 = i * S, j * S
+                # slice of dx_padded: (N, Cin, K, K)
+                patch_view = dx_padded[:, :, y0 : y0 + K, x0 : x0 + K]
+                # the computed gradients: (N, Cin, K, K)
+                grad_patch = dx_cols[:, i, j, :, :, :]
+                patch_view += grad_patch
+                # (because patch_view is a view, this writes directly into dx_padded)
 
-            for i in range(self.out_height):
-                for j in range(self.out_width):
-                    y, x = i * S, j * S
-                    # patch gradients for all channels at (i,j): shape (C_in, K, K)
-                    patch_grad = dx_cols[:, :, :, i, j]
-                    dx_padded[n, :, y : y + K, x : x + K] += patch_grad
-
-        dx = dx_padded[:, :, P : P + self.height, P : P + self.width]
-        return dx
+        # un‑pad
+        return dx_padded[:, :, P : P + self.height, P : P + self.width]
