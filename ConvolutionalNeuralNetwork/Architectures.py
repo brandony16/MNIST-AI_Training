@@ -24,17 +24,16 @@ MNIST_PARAMETERS = [
     lambda: Conv2D(in_channels=64, out_channels=128, kernel_size=3, padding=1),
     ReLU,
     lambda: MaxPool2D(pool_size=2, stride=2),  # → 128×3×3
+    lambda: AvgPool2D(pool_size=3, stride=3),  # → 128×1×1
     Flatten,
     # FC block 1
-    lambda: Dense(128 * 3 * 3, 128),
+    lambda: Dense(128, 256),
     ReLU,
-    lambda: Dropout(0.2),
-    # FC block 2
-    lambda: Dense(128, 64),
+    lambda: Dropout(0.3),
+    lambda: Dense(256, 128),
     ReLU,
-    lambda: Dropout(0.2),
-    # Classifier
-    lambda: Dense(64, 10),
+    lambda: Dropout(0.3),
+    lambda: Dense(128, 10),
     SoftmaxCrossEntropy,
 ]
 

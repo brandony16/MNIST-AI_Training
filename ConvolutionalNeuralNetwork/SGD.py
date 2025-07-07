@@ -20,25 +20,25 @@ class SGD:
         lr: learning rate
         momentum: momentum factor (0 for vanilla SGD)
         """
-        self.param_grad_list = param_grad_list
+        self.parameters = param_grad_list
         self.lr = lr
         self.momentum = momentum
 
         # Initialize one velocity buffer per param tensor
-        self.velocities = [cp.zeros_like(param) for param, _ in self.param_grad_list]
+        self.velocities = [cp.zeros_like(param) for param, _ in self.parameters]
 
     def zero_grad(self):
         """Zero out all gradients."""
-        for _, grad in self.param_grad_list:
-            grad[...] = 0
+        for _, grad in self.parameters:
+            grad.fill(0.0)
 
     def step(self):
         """Perform a single SGD+momentum update."""
-        for (param, grad), v in zip(self.param_grad_list, self.velocities):
+        for (param, grad), v in zip(self.parameters, self.velocities):
             # v = momentum * v - lr * grad
-            v[:] = self.momentum * v - self.lr * grad
-            # param = param + v
-            param[...] += v
+            v = self.momentum * v - self.lr * grad
+
+            param += v
 
     def set_lr(self, lr):
         self.lr = lr

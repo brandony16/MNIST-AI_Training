@@ -46,7 +46,7 @@ def parse_args():
     )
     parser.add_argument("--lr", type=float, default=1e-3, help="Initial learning rate")
     parser.add_argument(
-        "--lr-drop-every", type=int, default=5, help="Epoch interval to drop LR"
+        "--lr-drop-every", type=int, default=50, help="Epoch interval to drop LR"
     )
     parser.add_argument(
         "--lr-drop-factor", type=float, default=0.1, help="Factor to multiply LR by"
@@ -209,7 +209,7 @@ def main():
         )
 
         model = build_model(args.model_name, args.dataset)
-        optimizer = use_optimizer(model.parameters(), type="SGD", lr=args.lr)
+        optimizer = use_optimizer(model.parameters(), type="adam", lr=args.lr)
 
         history = train_and_evaluate(
             args, model, optimizer, X_train, y_train, X_test, y_test

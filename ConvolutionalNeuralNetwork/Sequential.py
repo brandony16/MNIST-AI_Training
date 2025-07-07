@@ -82,10 +82,9 @@ class Sequential:
             if augment_fn is not None:
                 data_batch = augment_fn(data_batch, max_shift=2)
 
-            loss = self.forward(data_batch, label_batch)
+            optimizer.zero_grad()
 
-            if i != 0:
-                optimizer.zero_grad()
+            loss = self.forward(data_batch, label_batch)
 
             self.backward()
 

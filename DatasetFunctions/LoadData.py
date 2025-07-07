@@ -61,9 +61,13 @@ def load_cnn_data(validation_split=0.2, one_hot=True, use_dataset="MNIST"):
         case "MNIST":
             dataset = load_mnist_cached()
             c, h, w = 1, 28, 28
+            MEAN = np.array([0.1307], dtype=np.float32)[:, None, None]
+            STD = np.array([0.3081], dtype=np.float32)[:, None, None]
         case "CIFAR":
             dataset = load_cifar_cached()
             c, h, w = 3, 32, 32
+            MEAN = np.array([0.4914, 0.4822, 0.4465], dtype=np.float32)[:, None, None]
+            STD = np.array([0.2470, 0.2435, 0.2616], dtype=np.float32)[:, None, None]
         case _:
             dataset = load_mnist_cached()
             c, h, w = 1, 28, 28
@@ -95,6 +99,9 @@ def load_cnn_data(validation_split=0.2, one_hot=True, use_dataset="MNIST"):
     # Reshape into appropriate sizes
     X_train = X_train.reshape(-1, c, h, w)
     X_test = X_test.reshape(-1, c, h, w)
+
+    X_train = (X_train - MEAN) / STD
+    X_test = (X_test - MEAN) / STD
 
     # Num inputs in and num classifications
     input = X_train.shape[1]
