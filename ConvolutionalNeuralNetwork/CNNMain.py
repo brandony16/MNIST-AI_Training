@@ -209,7 +209,7 @@ def main():
         )
 
         model = build_model(args.model_name, args.dataset)
-        optimizer = use_optimizer(model.parameters(), type="Adam", lr=args.lr)
+        optimizer = use_optimizer(model.parameters(), type="SGD", lr=args.lr)
 
         history = train_and_evaluate(
             args, model, optimizer, X_train, y_train, X_test, y_test

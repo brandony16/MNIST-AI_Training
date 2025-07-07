@@ -12,17 +12,33 @@ def use_optimizer(parameters, type="Adam", lr=0.001):
 
 
 class SGD:
-    def __init__(self, parameters, lr=0.001):
-        self.parameters = parameters  # List of (param, grad) tuples
+    def __init__(self, param_grad_list, lr=0.01, momentum=0.9):
+        """
+        param_grad_list: list of (param, grad) tuples, where
+                         - param is a cupy.ndarray of weights/biases
+                         - grad  is a cupy.ndarray of the same shape holding its gradient
+        lr: learning rate
+        momentum: momentum factor (0 for vanilla SGD)
+        """
+        self.param_grad_list = param_grad_list
         self.lr = lr
+        self.momentum = momentum
 
-    def step(self):
-        for param, grad in self.parameters:
-            param -= self.lr * grad
+        # Initialize one velocity buffer per param tensor
+        self.velocities = [cp.zeros_like(param) for param, _ in self.param_grad_list]
 
     def zero_grad(self):
-        for _, grad in self.parameters:
-            grad.fill(0.0)
+        """Zero out all gradients."""
+        for _, grad in self.param_grad_list:
+            grad[...] = 0
+
+    def step(self):
+        """Perform a single SGD+momentum update."""
+        for (param, grad), v in zip(self.param_grad_list, self.velocities):
+            # v = momentum * v - lr * grad
+            v[:] = self.momentum * v - self.lr * grad
+            # param = param + v
+            param[...] += v
 
     def set_lr(self, lr):
         self.lr = lr
