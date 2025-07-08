@@ -39,14 +39,14 @@ def parse_args():
         "--valid-split", type=float, default=0.2, help="Validation split fraction"
     )
     parser.add_argument(
-        "--batch-size", type=int, default=96, help="Training batch size"
+        "--batch-size", type=int, default=64, help="Training batch size"
     )
     parser.add_argument(
         "--epochs", type=int, default=12, help="Number of training epochs"
     )
     parser.add_argument("--lr", type=float, default=1e-3, help="Initial learning rate")
     parser.add_argument(
-        "--lr-drop-every", type=int, default=10, help="Epoch interval to drop LR"
+        "--lr-drop-every", type=int, default=15, help="Epoch interval to drop LR"
     )
     parser.add_argument(
         "--lr-drop-factor", type=float, default=0.1, help="Factor to multiply LR by"
@@ -72,10 +72,15 @@ def augment_batch(
     flip_prob: float = 0.5,
     brightness_jitter: float = 0.1,
 ):
+    """
+    Augments a batch of images with shifts and flips for less overfitting.
+
+    Returns: The augmented data
+    """
     N, C, _, _ = X.shape
     X_aug = X.copy()
 
-    # 1) Random shifts (roll)
+    # Random shifts by up to max_shift pixels
     shifts = cp.random.randint(-max_shift, max_shift + 1, size=(N, 2))
     for i in range(N):
         dy, dx = int(shifts[i, 0]), int(shifts[i, 1])
@@ -100,6 +105,16 @@ def augment_batch(
 
 
 def load_data(dataset: str, valid_split: float, sample_size: int):
+    """
+    Loads the data for a model to train on.
+
+    Returns:
+        X_train: the training split of data.
+        y_train: the labels for the training data (one-hot encoded).
+        X_test: the test split of data.
+        y_test: the labels for the testing data (one-hot encoded).
+        class_names: an object that converts the numerical predictions to the actual names of the classes (Ex: 4 -> Dog).
+    """
     logging.info("Loading and preprocessing data")
     X_train, y_train, X_test, y_test, _, _, class_names = load_cnn_data(
         validation_split=valid_split, one_hot=True, use_dataset=dataset
@@ -114,6 +129,11 @@ def load_data(dataset: str, valid_split: float, sample_size: int):
 
 
 def build_model(model_name: str, dataset: str):
+    """
+    Builds a model using a Sequential class.
+
+    Returns: the model.
+    """
     logging.info("Building model")
 
     if dataset == "CIFAR":
@@ -140,9 +160,11 @@ def adjust_learning_rate(
     return base_lr
 
 
-def compute_metrics(model, X, y_onehot, batch_size=256):
+def compute_metrics(model, X, y_onehot, batch_size=1024):
+    """
+    Computes loss and accuracy for a model given a batch of data and its labels
+    """
     model.eval()
-    """Returns (loss, accuracy)."""
     num_samples = X.shape[0]
     total_loss = 0.0
     labels = np.argmax(y_onehot, axis=1)
@@ -152,7 +174,7 @@ def compute_metrics(model, X, y_onehot, batch_size=256):
         y_batch = y_onehot[i : i + batch_size]
 
         # Forward pass
-        batch_loss = model.forward(X_batch, y_batch, training=False)
+        batch_loss = model.forward(X_batch, y_batch)
         total_loss += float(batch_loss) * X_batch.shape[0]  # weighted sum
 
     # Predict is already batched in Sequential
@@ -164,6 +186,11 @@ def compute_metrics(model, X, y_onehot, batch_size=256):
 
 
 def train_and_evaluate(args, model, optimizer, X_train, y_train, X_test, y_test):
+    """
+    Trains a model and stores performance metrics on test and train loss and accuracy.
+
+    Returns the history statistics as a list of objects.
+    """
     history = []
     lr = args.lr
 
@@ -197,7 +224,7 @@ def train_and_evaluate(args, model, optimizer, X_train, y_train, X_test, y_test)
         )
 
         logging.info(
-            f"Epoch {epoch}: test_acc={test_acc*100:.2f}%, train_acc={train_acc*100:.2f}%"
+            f"Epoch {epoch}: test_loss={test_loss:.2f}, train_loss={train_loss:.2f}"
         )
 
         if args.model_name:
@@ -207,6 +234,10 @@ def train_and_evaluate(args, model, optimizer, X_train, y_train, X_test, y_test)
 
 
 def evaluate_final(model, X_test, y_test, class_names, history):
+    """
+    Does the final evaluation of a model on the test data.
+    Also generates and displays the graphs of its performance over the epochs.
+    """
     model.eval()
 
     logging.info("Final evaluation on test set")
@@ -221,6 +252,9 @@ def evaluate_final(model, X_test, y_test, class_names, history):
 # Main
 # -----------------------------------------------------------------------------
 def main():
+    """
+    Builds, trains, and evaluates a CNN model.
+    """
     logging.basicConfig(
         level=logging.INFO, format="%(asctime)s %(levelname)s: %(message)s"
     )
@@ -232,7 +266,7 @@ def main():
         )
 
         model = build_model(args.model_name, args.dataset)
-        optimizer = use_optimizer(model.parameters(), type="adam", lr=args.lr)
+        optimizer = use_optimizer(model.parameters(), type="SGD", lr=args.lr)
 
         history = train_and_evaluate(
             args, model, optimizer, X_train, y_train, X_test, y_test

@@ -15,7 +15,7 @@ class Sequential:
         """Put model in eval mode (BatchNorm fixed, Dropout bypassed)."""
         self._training = False
 
-    def forward(self, x, y=None, training=True):
+    def forward(self, x, y=None):
         """
         If the last layer is a loss layer (e.g. SoftmaxCrossEntropy),
         it can take both logits and targets y to return a scalar loss.
@@ -28,8 +28,8 @@ class Sequential:
             if name == "SoftmaxCrossEntropy":
                 if y is not None:
                     out = layer.forward(out, cp.asarray(y))
-            elif not training and (name == "BatchNorm2D" or name == "Dropout"):
-                out = layer.forward(out, training=False)
+            elif name == "BatchNorm2D" or name == "Dropout":
+                out = layer.forward(out, training=self._training)
             else:
                 out = layer.forward(out)
         return out
@@ -64,7 +64,6 @@ class Sequential:
 
     def predict(self, x, batch_size=256):
         """Run forward through all but the loss layer, then take argmax."""
-        self.eval()
         out = cp.asarray(x)
         N = out.shape[0]
         all_preds = []
@@ -76,7 +75,7 @@ class Sequential:
                 if name == "SoftmaxCrossEntropy":
                     break
                 if name == "BatchNorm2D" or name == "Dropout":
-                    batch_pred = layer.forward(batch_pred, False)
+                    batch_pred = layer.forward(batch_pred, training=False)
                 else:
                     batch_pred = layer.forward(batch_pred)
 
@@ -105,7 +104,7 @@ class Sequential:
 
             optimizer.zero_grad()
 
-            loss = self.forward(data_batch, label_batch, training=True)
+            loss = self.forward(data_batch, label_batch)
 
             self.backward()
 

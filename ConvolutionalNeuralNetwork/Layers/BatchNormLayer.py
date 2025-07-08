@@ -4,7 +4,7 @@ import cupy as cp
 class BatchNorm2D:
     def __init__(self, num_features: int, momentum: float = 0.9, eps: float = 1e-5):
         """
-        2D Batch Normalization layer for CNN feature maps.
+        2D Batch Normalization layer
 
         Args:
             num_features (int): Number of channels C.
@@ -36,11 +36,11 @@ class BatchNorm2D:
 
         During training:
         - Compute batch mean/var over N*H*W for each channel.
-        - Normalize and scale/shift: y = γ * (x - μ)/√(σ²+ε) + β.
+        - Normalize and scale/shift.
         - Update running estimates.
 
         During eval:
-        - Use stored running_mean/running_var instead of batch stats.
+        - Use stored running_mean/running_var instead of batch stats. No updates
 
         Args:
             daxta (cp.ndarray): Input of shape (N, C, H, W).
@@ -99,7 +99,7 @@ class BatchNorm2D:
         Backward pass.
 
         Computes gradients w.r.t.:
-         - γ and β (learnable parameters)
+         - gamma and beta (learnable parameters)
          - input x
 
         Returns:

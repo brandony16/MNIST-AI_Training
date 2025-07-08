@@ -2,7 +2,7 @@ import cupy as cp
 
 
 class Dense:
-    def __init__(self, inputSize, outputSize):
+    def __init__(self, inputSize: int, outputSize: int):
         # Initializes a matrix of dimensons inputSize x outputSize of weights
         self.weights = cp.random.randn(inputSize, outputSize) * cp.sqrt(2.0 / inputSize)
         # Inititalizes an array of biases for each 'neuron'
@@ -12,13 +12,13 @@ class Dense:
         self.dW = cp.zeros_like(self.weights)
         self.db = cp.zeros_like(self.bias)
 
-    def forward(self, inputs):
+    def forward(self, inputs: cp.ndarray):
         self.inputs = inputs
         self.linear_output = cp.dot(inputs, self.weights) + self.bias
 
         return self.linear_output
 
-    def backward(self, error):
+    def backward(self, error: cp.ndarray):
         grad_weights = cp.dot(self.inputs.T, error)
         grad_biases = cp.sum(error, axis=0)
 

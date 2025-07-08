@@ -17,7 +17,7 @@ class RandomForest:
         num_trees: int = 100,
         max_depth: Optional[int] = None,
         max_features: Optional[int] = None,
-        min_samples_leaf: int = 1,
+        min_samples_leaf: int = 2,
         bootstrap: bool = True,
         n_jobs: int = -1,
         random_state: Optional[int] = None,
@@ -40,7 +40,7 @@ class RandomForest:
     def fit(self, data: np.ndarray, labels: np.ndarray):
         data = np.asarray(data, dtype=np.float32)
         labels = np.asarray(labels, dtype=np.int32)
-        num_samples, num_features = data.shape
+        num_samples = data.shape[0]
         self.classes_ = np.unique(labels)
 
         rng = np.random.RandomState(self.random_state)

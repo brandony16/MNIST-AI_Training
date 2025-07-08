@@ -7,8 +7,7 @@ class Dropout:
         Dropout layer with probability p of dropping each unit.
 
         Uses inverted dropout: at train time, units are zeroed with probability p,
-        and the remaining activations are scaled by 1/(1-p) so that you don't need
-        to rescale at inference.
+        and the remaining activations are scaled by 1/(1-p).
 
         Args:
             p (float): dropout probability in [0, 1). Fraction of units to drop.

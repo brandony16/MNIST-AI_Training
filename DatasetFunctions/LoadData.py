@@ -42,7 +42,11 @@ def load_and_preprocess_data(validation_split=0.2, one_hot=True, use_dataset="MN
 
     # Num inputs in and num classifications
     input = X_train.shape[1]
-    output = len(set(np.argmax(y_test, axis=1)))
+
+    if one_hot:
+        output = len(set(np.argmax(y_test, axis=1)))
+    else:
+        output = len(set(y_test))
 
     return (
         X_train,

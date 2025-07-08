@@ -2,6 +2,16 @@ import cupy as cp
 
 
 def use_optimizer(parameters, type="Adam", lr=0.001):
+    """
+    Gets the correct optimizer.
+
+    Args:
+        parameters: list of (param, grad) tuples, where
+                         - param is a cupy.ndarray of weights/biases
+                         - grad  is a cupy.ndarray of the same shape holding its gradient
+        type: the type of optimizer to use (SGD or Adam)
+        lr: learning rate
+    """
     match (type.upper()):
         case "SGD":
             return SGD(parameters, lr)
@@ -12,17 +22,18 @@ def use_optimizer(parameters, type="Adam", lr=0.001):
 
 
 class SGD:
-    def __init__(self, param_grad_list, lr=0.01, momentum=0.9):
+    def __init__(self, parameters, lr=0.01, momentum=0.8, decay=1e-4):
         """
-        param_grad_list: list of (param, grad) tuples, where
+        parameters: list of (param, grad) tuples, where
                          - param is a cupy.ndarray of weights/biases
                          - grad  is a cupy.ndarray of the same shape holding its gradient
         lr: learning rate
         momentum: momentum factor (0 for vanilla SGD)
         """
-        self.parameters = param_grad_list
+        self.parameters = parameters
         self.lr = lr
         self.momentum = momentum
+        self.decay = decay
 
         # Initialize one velocity buffer per param tensor
         self.velocities = [cp.zeros_like(param) for param, _ in self.parameters]
@@ -35,6 +46,8 @@ class SGD:
     def step(self):
         """Perform a single SGD+momentum update."""
         for (param, grad), v in zip(self.parameters, self.velocities):
+            param *= 1 - self.lr * self.decay
+
             # v = momentum * v - lr * grad
             v = self.momentum * v - self.lr * grad
 
@@ -48,6 +61,12 @@ class Adam:
     def __init__(
         self, parameters, learningRate=0.001, beta1=0.9, beta2=0.999, epsilon=1e-8
     ):
+        """
+        parameters: list of (param, grad) tuples, where
+                         - param is a cupy.ndarray of weights/biases
+                         - grad  is a cupy.ndarray of the same shape holding its gradient
+        learningRate: learning rate
+        """
         self.parameters = parameters  # List of (param, grad) tuples
 
         self.lr = learningRate

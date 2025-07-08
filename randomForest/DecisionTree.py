@@ -23,7 +23,7 @@ class DecisionTree:
         self,
         max_depth: int = None,
         max_features: int = None,
-        min_samples_leaf: int = 1,
+        min_samples_leaf: int = 2,
     ):
         self.max_depth = max_depth or np.inf
         self.max_features = max_features

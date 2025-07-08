@@ -152,7 +152,6 @@ class AvgPool2D:
         # each window has ph*pw inputs, so each gets go/(ph*pw)
         go = go / (ph * pw)
 
-        # for each spatial window, route gradient to max positions
         for i in range(H_out):
             for j in range(W_out):
                 dx_p[

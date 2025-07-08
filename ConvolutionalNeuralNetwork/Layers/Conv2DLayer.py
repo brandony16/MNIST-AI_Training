@@ -1,20 +1,28 @@
 import cupy as cp
 from cupy.lib.stride_tricks import sliding_window_view
-from numba import prange
 
 
 class Conv2D:
-    def __init__(self, in_channels, out_channels, padding=0, kernel_size=3, stride=1):
-
+    def __init__(
+        self,
+        in_channels: int,
+        out_channels: int,
+        padding: int = 0,
+        kernel_size: int = 3,
+        stride: int = 1,
+    ):
         self.c_in = in_channels
         self.c_out = out_channels
         self.p = padding
         self.k_size = kernel_size
         self.s = stride
 
-        self.weights = cp.random.randn(
-            out_channels, in_channels, kernel_size, kernel_size
-        ) * cp.sqrt(2 / (in_channels * kernel_size ^ 2))
+        # Initialize weights and biases using He initialization
+        scale = cp.sqrt(2 / (in_channels * kernel_size * kernel_size))
+        self.weights = (
+            cp.random.randn(out_channels, in_channels, kernel_size, kernel_size) * scale
+        )
+
         self.bias = cp.zeros((out_channels,), dtype=cp.float32)
 
         self.dW = cp.zeros_like(self.weights)
@@ -22,9 +30,9 @@ class Conv2D:
 
     @property
     def w_flat(self):
-        return self.weights.reshape(self.c_out, -1)
+        return self.weights.reshape(self.c_out, -1)  # (Cout, Cin*K*K)
 
-    def forward(self, inputs):
+    def forward(self, inputs: cp.ndarray):
         N, _, height, width = inputs.shape
         K, S, P = self.k_size, self.s, self.p
 
@@ -68,7 +76,7 @@ class Conv2D:
 
         return out
 
-    def backward(self, d_out):
+    def backward(self, d_out: cp.ndarray):
         N = d_out.shape[0]
         K, S, P = self.k_size, self.s, self.p
         H_out, W_out = self.out_height, self.out_width
@@ -88,16 +96,16 @@ class Conv2D:
 
         # compute dx_cols: shape (N, C_in, K, K, H_out, W_out)
         d_out_flat = d_out.reshape(N, self.c_out, -1)  # (N, Cout, Hout*Wout)
-        dx_cols_flat = (
-            d_out_flat.transpose(0, 2, 1) @ self.w_flat
+        dx_cols_flat = cp.dot(
+            d_out_flat.transpose(0, 2, 1), self.w_flat
         )  # (N, Hout*Wout, Cin*K*K)
+
         dx_cols = dx_cols_flat.reshape(N, H_out, W_out, self.c_in, K, K)
-        # now dx_cols is (N, Hout, Wout, Cin, K, K)
 
         # prepare padded gradient
         dx_padded = cp.zeros_like(self.inputs_padded)  # (N, Cin, H+2P, W+2P)
 
-        # scatter each K×K patch back into dx_padded using only two loops
+        # scatter each K×K patch back into dx_padded
         for i in range(H_out):
             for j in range(W_out):
                 y0, x0 = i * S, j * S
@@ -106,7 +114,6 @@ class Conv2D:
                 # the computed gradients: (N, Cin, K, K)
                 grad_patch = dx_cols[:, i, j, :, :, :]
                 patch_view += grad_patch
-                # (because patch_view is a view, this writes directly into dx_padded)
 
         # un‑pad
         return dx_padded[:, :, P : P + self.height, P : P + self.width]

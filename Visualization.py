@@ -63,6 +63,49 @@ def build_metrics_fig(labels, predictions):
     plt.show()
 
 
+def show_final_metrics(labels, predictions, class_map):
+    fig, axes = plt.subplots(1, 2, figsize=(8, 6))
+
+    class_names = [class_map[i] for i in range(len(class_map))]
+    # Norm Confusion Matrix
+    confMat = confusion_matrix(labels, predictions, normalize="true")
+    axes[0].imshow(confMat, interpolation="nearest", vmin=0, vmax=1)
+    axes[0].set(
+        title="Confusion Matrix Heatmap",
+        xlabel="Predicted",
+        ylabel="Actual",
+        xticks=range(len(class_names)),
+        xticklabels=class_names,
+        yticks=range(len(class_names)),
+        yticklabels=class_names,
+    )
+    plt.setp(axes[0].get_xticklabels(), rotation=90)
+
+    # Precision, Recall, & F1 per class
+    precision = precision_score(labels, predictions, average=None)
+    recall = recall_score(labels, predictions, average=None)
+    f1 = f1_score(labels, predictions, average=None)
+
+    metrics_df = pd.DataFrame(
+        {"precision": precision, "recall": recall, "f1_score": f1},
+        index=[str(i) for i in range(len(precision))],
+    )
+
+    metrics_df.plot.bar(ax=axes[1])
+
+    axes[1].set_box_aspect(1)
+    axes[1].set(
+        title="Precision/Recall/F1 by Class",
+        xlabel="Class",
+        ylabel="Score",
+        xticks=range(len(class_names)),
+        xticklabels=class_names,
+    )
+
+    fig.tight_layout()
+    plt.show()
+
+
 def show_all_metrics(labels, predictions, dataframe, class_map):
     """
     Function that builds and shows all graphs in one window using matplotlib.
