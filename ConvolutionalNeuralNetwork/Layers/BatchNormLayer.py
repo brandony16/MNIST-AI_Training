@@ -19,6 +19,10 @@ class BatchNorm2D:
         self.gamma = cp.ones((num_features,), dtype=cp.float32)
         self.beta = cp.zeros((num_features,), dtype=cp.float32)
 
+        # Temp values for optimizer param list
+        self.dgamma = cp.zeros_like(self.gamma)
+        self.dbeta = cp.zeros_like(self.beta)
+
         # Running estimates used for evaluation
         self.running_mean = cp.zeros((num_features,), dtype=cp.float32)
         self.running_var = cp.ones((num_features,), dtype=cp.float32)

@@ -66,17 +66,35 @@ def parse_args():
     return parser.parse_args()
 
 
-def augment_batch(X, max_shift=2):
-    N = X.shape[0]
+def augment_batch(
+    X: cp.ndarray,
+    max_shift: int = 2,
+    flip_prob: float = 0.5,
+    brightness_jitter: float = 0.1,
+):
+    N, C, _, _ = X.shape
     X_aug = X.copy()
 
-    # Random shifts
-    # generate per‑image shifts in [-max_shift, max_shift]
+    # 1) Random shifts (roll)
     shifts = cp.random.randint(-max_shift, max_shift + 1, size=(N, 2))
     for i in range(N):
         dy, dx = int(shifts[i, 0]), int(shifts[i, 1])
-        # roll along H axis then W axis
         X_aug[i] = cp.roll(cp.roll(X_aug[i], dy, axis=1), dx, axis=2)
+
+    # Random horizontal flips (only if more than 1 channel)
+    if C > 1:
+        flip_mask = cp.random.rand(N) < flip_prob
+        # flip W axis (axis=3)
+        X_aug[flip_mask] = X_aug[flip_mask, :, :, ::-1]
+
+        # Brightness jitter
+        # scale factor per image in [1-brightness_jitter, 1+brightness_jitter]
+        deltas = (
+            1
+            + (cp.random.rand(N, 1, 1, 1, dtype=cp.float32) * 2 - 1) * brightness_jitter
+        )
+        X_aug = X_aug * deltas
+        cp.clip(X_aug, 0.0, 1.0, out=X_aug)
 
     return X_aug
 
@@ -123,6 +141,7 @@ def adjust_learning_rate(
 
 
 def compute_metrics(model, X, y_onehot, batch_size=256):
+    model.eval()
     """Returns (loss, accuracy)."""
     num_samples = X.shape[0]
     total_loss = 0.0
@@ -153,6 +172,7 @@ def train_and_evaluate(args, model, optimizer, X_train, y_train, X_test, y_test)
         optimizer.set_lr(lr)
 
         if epoch > 0:
+            model.train_mode()
             model.train(
                 optimizer,
                 X_train,
@@ -161,6 +181,7 @@ def train_and_evaluate(args, model, optimizer, X_train, y_train, X_test, y_test)
                 augment_fn=augment_batch,
             )
 
+        model.eval()
         train_loss, train_acc, _, _ = compute_metrics(model, X_train, y_train)
         test_loss, test_acc, _, _ = compute_metrics(model, X_test, y_test)
 
@@ -186,6 +207,8 @@ def train_and_evaluate(args, model, optimizer, X_train, y_train, X_test, y_test)
 
 
 def evaluate_final(model, X_test, y_test, class_names, history):
+    model.eval()
+
     logging.info("Final evaluation on test set")
     test_loss, test_acc, labels, preds = compute_metrics(model, X_test, y_test)
     logging.info(f"Test Loss: {test_loss:.4f}, Test Accuracy: {test_acc*100:.2f}%")

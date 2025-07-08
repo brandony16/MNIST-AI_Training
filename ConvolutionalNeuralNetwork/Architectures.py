@@ -40,26 +40,20 @@ MNIST_PARAMETERS = [
 CIFAR_PARAMETERS = [
     # --- Block 1: 3×3 conv ×2, 32 filters ---
     lambda: Conv2D(3, 32, kernel_size=3, padding=1),
-    lambda: BatchNorm2D(32),
     ReLU,
     lambda: Conv2D(32, 32, kernel_size=3, padding=1),
-    lambda: BatchNorm2D(32),
     ReLU,
     lambda: MaxPool2D(pool_size=2, stride=2),  # → 32×16×16
     # --- Block 2: 3×3 conv ×2, 64 filters ---
     lambda: Conv2D(32, 64, kernel_size=3, padding=1),
-    lambda: BatchNorm2D(64),
     ReLU,
     lambda: Conv2D(64, 64, kernel_size=3, padding=1),
-    lambda: BatchNorm2D(64),
     ReLU,
     lambda: MaxPool2D(pool_size=2, stride=2),  # → 64×8×8
     # --- Block 3: 3×3 conv ×2, 128 filters ---
     lambda: Conv2D(64, 128, kernel_size=3, padding=1),
-    lambda: BatchNorm2D(128),
     ReLU,
     lambda: Conv2D(128, 128, kernel_size=3, padding=1),
-    lambda: BatchNorm2D(128),
     ReLU,
     lambda: MaxPool2D(pool_size=2, stride=2),  # → 128×4×4
     # --- Global average pooling to get 128 features ---

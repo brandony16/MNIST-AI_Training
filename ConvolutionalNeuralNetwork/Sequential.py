@@ -5,6 +5,15 @@ import cupy as cp
 class Sequential:
     def __init__(self, layers):
         self.layers = layers
+        self._training = False
+
+    def train_mode(self):
+        """Put model in training mode (BatchNorm updates, Dropout active)."""
+        self._training = True
+
+    def eval(self):
+        """Put model in eval mode (BatchNorm fixed, Dropout bypassed)."""
+        self._training = False
 
     def forward(self, x, y=None, training=True):
         """
@@ -14,12 +23,13 @@ class Sequential:
         out = cp.asarray(x)
         self.forward_times = []
         for layer in self.layers:
+            name = layer.__class__.__name__
             # if it's the final loss layer and y is provided:
-            if layer.__class__.__name__ == "SoftmaxCrossEntropy":
+            if name == "SoftmaxCrossEntropy":
                 if y is not None:
                     out = layer.forward(out, cp.asarray(y))
-            elif not training and layer.__class__.__name__ == "BatchNorm2D":
-                out = layer.forward(out, False)
+            elif not training and (name == "BatchNorm2D" or name == "Dropout"):
+                out = layer.forward(out, training=False)
             else:
                 out = layer.forward(out)
         return out
@@ -47,23 +57,28 @@ class Sequential:
                 params.append((layer.weights, layer.dW))
             if hasattr(layer, "bias"):
                 params.append((layer.bias, layer.db))
+            if hasattr(layer, "gamma"):
+                params.append((layer.gamma, layer.dgamma))
+                params.append((layer.beta, layer.dbeta))
         return params
 
     def predict(self, x, batch_size=256):
         """Run forward through all but the loss layer, then take argmax."""
+        self.eval()
         out = cp.asarray(x)
         N = out.shape[0]
         all_preds = []
         for i in range(0, N, batch_size):
             batch_pred = out[i : i + batch_size]
             for layer in self.layers:
+                name = layer.__class__.__name__
                 # skip the loss layer if present
-                if layer.__class__.__name__ == "SoftmaxCrossEntropy":
+                if name == "SoftmaxCrossEntropy":
                     break
-                if layer.__class__.__name__ == "BatchNorm2D":
-                    batch_pred = layer.forward(batch_pred, training=False)
-
-                batch_pred = layer.forward(batch_pred)
+                if name == "BatchNorm2D" or name == "Dropout":
+                    batch_pred = layer.forward(batch_pred, False)
+                else:
+                    batch_pred = layer.forward(batch_pred)
 
             preds = cp.argmax(batch_pred, axis=1)
             all_preds.append(preds)
@@ -73,6 +88,7 @@ class Sequential:
     def train(
         self, optimizer, train_data, train_labels, batch_size=64, augment_fn=None
     ):
+        self.train_mode()
         N = train_data.shape[0]
 
         train_data = cp.asarray(train_data)
