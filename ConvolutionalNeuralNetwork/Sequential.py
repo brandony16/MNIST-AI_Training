@@ -6,7 +6,7 @@ class Sequential:
     def __init__(self, layers):
         self.layers = layers
 
-    def forward(self, x, y=None):
+    def forward(self, x, y=None, training=True):
         """
         If the last layer is a loss layer (e.g. SoftmaxCrossEntropy),
         it can take both logits and targets y to return a scalar loss.
@@ -18,6 +18,8 @@ class Sequential:
             if layer.__class__.__name__ == "SoftmaxCrossEntropy":
                 if y is not None:
                     out = layer.forward(out, cp.asarray(y))
+            elif not training and layer.__class__.__name__ == "BatchNorm2D":
+                out = layer.forward(out, False)
             else:
                 out = layer.forward(out)
         return out
@@ -58,6 +60,9 @@ class Sequential:
                 # skip the loss layer if present
                 if layer.__class__.__name__ == "SoftmaxCrossEntropy":
                     break
+                if layer.__class__.__name__ == "BatchNorm2D":
+                    batch_pred = layer.forward(batch_pred, training=False)
+
                 batch_pred = layer.forward(batch_pred)
 
             preds = cp.argmax(batch_pred, axis=1)
@@ -84,7 +89,7 @@ class Sequential:
 
             optimizer.zero_grad()
 
-            loss = self.forward(data_batch, label_batch)
+            loss = self.forward(data_batch, label_batch, training=True)
 
             self.backward()
 

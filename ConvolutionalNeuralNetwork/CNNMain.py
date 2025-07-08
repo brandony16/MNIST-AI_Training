@@ -46,7 +46,7 @@ def parse_args():
     )
     parser.add_argument("--lr", type=float, default=1e-3, help="Initial learning rate")
     parser.add_argument(
-        "--lr-drop-every", type=int, default=50, help="Epoch interval to drop LR"
+        "--lr-drop-every", type=int, default=10, help="Epoch interval to drop LR"
     )
     parser.add_argument(
         "--lr-drop-factor", type=float, default=0.1, help="Factor to multiply LR by"
@@ -133,7 +133,7 @@ def compute_metrics(model, X, y_onehot, batch_size=256):
         y_batch = y_onehot[i : i + batch_size]
 
         # Forward pass
-        batch_loss = model.forward(X_batch, y_batch)
+        batch_loss = model.forward(X_batch, y_batch, training=False)
         total_loss += float(batch_loss) * X_batch.shape[0]  # weighted sum
 
     # Predict is already batched in Sequential
