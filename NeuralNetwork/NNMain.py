@@ -8,7 +8,7 @@ import argparse
 from contextlib import contextmanager
 
 from NeuralNetwork.NNModel import NeuralNetwork
-from DatasetFunctions.LoadData import load_cnn_data
+from DatasetFunctions.LoadData import load_and_preprocess_data
 from Visualization import show_all_metrics
 from Optimizer import use_optimizer
 
@@ -104,8 +104,8 @@ def load_data(dataset: str, valid_split: float, sample_size: int):
         class_names: an object that converts the numerical predictions to the actual names of the classes (Ex: 4 -> Dog).
     """
     logging.info("Loading and preprocessing data")
-    X_train, y_train, X_test, y_test, input, output, class_names = load_cnn_data(
-        validation_split=valid_split, one_hot=True, use_dataset=dataset
+    X_train, y_train, X_test, y_test, input, output, class_names = load_and_preprocess_data(
+        validation_split=valid_split, one_hot=True, use_dataset=dataset, flatten=False
     )
 
     # Make cupy arrays and get sample size
@@ -227,10 +227,10 @@ def main():
             args.dataset, args.valid_split, args.sample_size
         )
 
-        layer_sizes = [input, 1024, 512, 256, 128, output]
+        layer_sizes = [input, 2048, 1024, 512, 256, 128, output]
         model = NeuralNetwork(
             layer_sizes=layer_sizes,
-            activation="ReLU",
+            activation="LeakyReLU",
         )
         optimizer = use_optimizer(model.parameters(), type="Adam", lr=args.lr)
 

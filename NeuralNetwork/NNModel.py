@@ -4,6 +4,7 @@ from DenseLayer import Dense
 from ActivationLayers import get_activation
 from FlattenLayer import Flatten
 from DropoutLayer import Dropout
+from BatchNorm import BatchNorm
 
 
 class NeuralNetwork:
@@ -23,6 +24,7 @@ class NeuralNetwork:
 
             # Dont add activation after final Dense layer
             if i != num_layers - 2:
+                self.layers.append(BatchNorm(layer_sizes[i + 1]))
                 self.layers.append(get_activation(activation)())
                 self.layers.append(Dropout(0.2))
         self.layers.append(SoftmaxCrossEntropy())
@@ -64,6 +66,9 @@ class NeuralNetwork:
                 params.append((layer.weights, layer.dW))
             if hasattr(layer, "bias"):
                 params.append((layer.bias, layer.db))
+            if hasattr(layer, "gamma"):
+                params.append((layer.gamma, layer.dgamma))
+                params.append((layer.beta, layer.dbeta))
         return params
 
     def train(self, optimizer, data, labels, batch_size=64, augment_fn=None):

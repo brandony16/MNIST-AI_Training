@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 import cupy as cp
 
-from DatasetFunctions.LoadData import load_cnn_data
+from DatasetFunctions.LoadData import load_and_preprocess_data
 from Sequential import Sequential
 from SGD import use_optimizer
 from Visualization import show_all_metrics
@@ -116,7 +116,7 @@ def load_data(dataset: str, valid_split: float, sample_size: int):
         class_names: an object that converts the numerical predictions to the actual names of the classes (Ex: 4 -> Dog).
     """
     logging.info("Loading and preprocessing data")
-    X_train, y_train, X_test, y_test, _, _, class_names = load_cnn_data(
+    X_train, y_train, X_test, y_test, _, _, class_names = load_and_preprocess_data(
         validation_split=valid_split, one_hot=True, use_dataset=dataset
     )
 
