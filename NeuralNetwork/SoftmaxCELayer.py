@@ -1,7 +1,7 @@
 import cupy as cp
 
 
-class SoftmaxCrossEntropyLayer:
+class SoftmaxCrossEntropy:
     def forward(self, logits, labels):
         # Softmax
         max_output = cp.max(logits, axis=1, keepdims=True)
@@ -19,4 +19,5 @@ class SoftmaxCrossEntropyLayer:
     def cross_entropy(self, labels, output):
         # Clip values to prevent log(0)
         output = cp.clip(output, 1e-12, 1.0 - 1e-12)
-        return -cp.mean(cp.sum(labels * cp.log(output + 1e-8), axis=1))
+        self.loss = -cp.mean(cp.sum(labels * cp.log(output + 1e-8), axis=1))
+        return self.loss

@@ -108,7 +108,7 @@ def load_cnn_data(validation_split=0.2, one_hot=True, use_dataset="MNIST"):
     X_test = (X_test - MEAN) / STD
 
     # Num inputs in and num classifications
-    input = X_train.shape[1]
+    input = X_train.shape[1] * X_train.shape[2] * X_train.shape[3]
     output = len(set(np.argmax(y_test, axis=1)))
 
     return (

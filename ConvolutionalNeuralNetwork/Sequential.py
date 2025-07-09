@@ -62,7 +62,7 @@ class Sequential:
                 params.append((layer.beta, layer.dbeta))
         return params
 
-    def predict(self, x, batch_size=256):
+    def predict(self, x, batch_size=1024):
         """Run forward through all but the loss layer, then take argmax."""
         out = cp.asarray(x)
         N = out.shape[0]
@@ -71,7 +71,7 @@ class Sequential:
             batch_pred = out[i : i + batch_size]
             for layer in self.layers:
                 name = layer.__class__.__name__
-                # skip the loss layer if present
+                # skip the loss layer
                 if name == "SoftmaxCrossEntropy":
                     break
                 if name == "BatchNorm2D" or name == "Dropout":
@@ -87,6 +87,7 @@ class Sequential:
     def train(
         self, optimizer, train_data, train_labels, batch_size=64, augment_fn=None
     ):
+        """Trains the model for one epoch on the given training data"""
         self.train_mode()
         N = train_data.shape[0]
 

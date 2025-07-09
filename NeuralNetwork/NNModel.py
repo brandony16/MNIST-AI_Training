@@ -1,79 +1,113 @@
-from NeuralNetwork.DenseActivationLayer import DenseActivationLayer
 import cupy as cp
-from SoftmaxCELayer import SoftmaxCrossEntropyLayer
-from DenseLayer import DenseLayer
+from SoftmaxCELayer import SoftmaxCrossEntropy
+from DenseLayer import Dense
+from ActivationLayers import get_activation
+from FlattenLayer import Flatten
+from DropoutLayer import Dropout
 
 
 class NeuralNetwork:
-    def __init__(self, layer_sizes, activation="relu"):
+    def __init__(
+        self,
+        layer_sizes,
+        activation="relu",
+    ):
         cp.random.seed(42)
-        self.hidden_layers = []
-        num_layers = len(layer_sizes)
-        for i in range(num_layers - 2):
-            self.hidden_layers.append(
-                DenseActivationLayer(layer_sizes[i], layer_sizes[i + 1], activation)
-            )
 
-        # Final Dense (no activation) and CE layer for faster training
-        self.final_dense = DenseLayer(layer_sizes[-2], layer_sizes[-1])
-        self.ce_layer = SoftmaxCrossEntropyLayer()
+        # Build layers
+        self.layers = []
+        num_layers = len(layer_sizes)
+        self.layers.append(Flatten())
+        for i in range(num_layers - 1):
+            self.layers.append(Dense(layer_sizes[i], layer_sizes[i + 1]))
+
+            # Dont add activation after final Dense layer
+            if i != num_layers - 2:
+                self.layers.append(get_activation(activation)())
+                self.layers.append(Dropout(0.2))
+        self.layers.append(SoftmaxCrossEntropy())
+
+        self._training = False
+
+    def train_mode(self):
+        self._training = True
+
+    def eval_mode(self):
+        self._training = False
 
     def forward(self, data, labels=None):
-        data = cp.asarray(data)
-        for layer in self.hidden_layers:
-            data = layer.forward(data)
-        logits = self.final_dense.forward(data)
+        out = cp.asarray(data)
+        for layer in self.layers:
+            name = layer.__class__.__name__
+            # if it's the final loss layer and y is provided:
+            if name == "SoftmaxCrossEntropy":
+                if labels is not None:
+                    out = layer.forward(out, cp.asarray(labels))
+            elif name == "Dropout":
+                out = layer.forward(out, training=self._training)
+            else:
+                out = layer.forward(out)
+        return out
 
-        if labels is None:
-            # inference: just return softmax probabilities
-            z_max = cp.max(logits, axis=1, keepdims=True)
-            exp_z = cp.exp(logits - z_max)
-            return exp_z / exp_z.sum(axis=1, keepdims=True)
+    def backward(self):
+        grad = None
+        for layer in reversed(self.layers):
+            if hasattr(layer, "backward"):
+                grad = layer.backward(grad) if grad is not None else layer.backward()
 
-        return self.ce_layer.forward(logits, cp.asarray(labels))
+        return grad
 
-    def backward(self, learningRate):
-        gradient = self.ce_layer.backward()
-        gradient = self.final_dense.backward(gradient, learningRate)
+    def parameters(self):
+        params = []
+        for layer in self.layers:
+            if hasattr(layer, "weights"):
+                params.append((layer.weights, layer.dW))
+            if hasattr(layer, "bias"):
+                params.append((layer.bias, layer.db))
+        return params
 
-        for layer in reversed(self.hidden_layers):
-            gradient = layer.backward(gradient, learningRate)
+    def train(self, optimizer, data, labels, batch_size=64, augment_fn=None):
+        """Trains the model for one epoch on the given training data"""
+        self.train_mode()
+        N = data.shape[0]
 
-    def train(self, data, labels, epochs=10, learningRate=0.1, batch_size=32):
-        data = cp.asarray(data)
-        labels = cp.asarray(labels)
+        train_data = cp.asarray(data)
+        train_labels = cp.asarray(labels)
 
-        num_samples = data.shape[0]
-        for _ in range(epochs):
-            # Shuffle the data at the beginning of each epoch
-            indices = cp.arange(num_samples)
-            cp.random.shuffle(indices)
-            data = data[indices]
-            labels = labels[indices]
-            print("Epoch Started")
+        perm = cp.random.permutation(N)
+        for i in range(0, N, batch_size):
+            idx = perm[i : i + batch_size]
+            data_batch = train_data[idx]
+            label_batch = train_labels[idx]
 
-            # Process the data in batches
-            for start_idx in range(0, num_samples, batch_size):
-                end_idx = min(start_idx + batch_size, num_samples)
-                batch_data = data[start_idx:end_idx]
-                batch_labels = labels[start_idx:end_idx]
+            if augment_fn is not None:
+                data_batch = augment_fn(data_batch, max_shift=2)
 
-                # Forward and backward pass for the batch
-                self.forward(batch_data, batch_labels)
-                self.backward(learningRate)
+            optimizer.zero_grad()
 
-    # Loss calculation
-    def cross_entropy(self, y, output):
-        # Clip values to prevent log(0)
-        output = cp.asarray(output)
-        y = cp.asarray(y)
-        output = cp.clip(output, 1e-12, 1.0 - 1e-12)
-        return -cp.mean(cp.sum(y * cp.log(output + 1e-8), axis=1))
+            loss = self.forward(data_batch, label_batch)
 
-    def cross_entropy_derivative(self, y, output):
-        return output - y
+            self.backward()
 
-    def predict(self, data):
-        data = cp.asarray(data)
-        output = self.forward(data)
-        return cp.argmax(output, axis=1)
+            optimizer.step()
+
+    def predict(self, data, batch_size=1024):
+        out = cp.asarray(data)
+        N = out.shape[0]
+        all_preds = []
+        for i in range(0, N, batch_size):
+            batch_pred = out[i : i + batch_size]
+            for layer in self.layers:
+                name = layer.__class__.__name__
+                # skip the loss layer
+                if name == "SoftmaxCrossEntropy":
+                    break
+                if name == "Dropout":
+                    batch_pred = layer.forward(batch_pred, training=False)
+                else:
+                    batch_pred = layer.forward(batch_pred)
+
+            preds = cp.argmax(batch_pred, axis=1)
+            all_preds.append(preds)
+
+        return cp.concatenate(all_preds, axis=0)

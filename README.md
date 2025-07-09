@@ -11,7 +11,7 @@ For this project, I trained my models on the MNIST and CIFAR-10 datasets.
     - 70,000 total images
 - **CIFAR-10**
     - Dataset of 32x32 images of objects and animals.
-    - 10 classes: Airplane, Automobile, Bird, Cat, Deer, Dog, Frog, Horse, Ship, Truck
+    - 10 classes: Airplane, Automobile, Bird, Cat, Deer, Dog, Frog, Horse, Ship, and Truck
     - All color images.
     - 60,000 total images
 
