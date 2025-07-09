@@ -45,7 +45,7 @@ class NeuralNetwork:
             if name == "SoftmaxCrossEntropy":
                 if labels is not None:
                     out = layer.forward(out, cp.asarray(labels))
-            elif name == "Dropout":
+            elif name == "Dropout" or name == "BatchNorm":
                 out = layer.forward(out, training=self._training)
             else:
                 out = layer.forward(out)
@@ -107,7 +107,7 @@ class NeuralNetwork:
                 # skip the loss layer
                 if name == "SoftmaxCrossEntropy":
                     break
-                if name == "Dropout":
+                if name == "Dropout" or name == "BatchNorm":
                     batch_pred = layer.forward(batch_pred, training=False)
                 else:
                     batch_pred = layer.forward(batch_pred)

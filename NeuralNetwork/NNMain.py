@@ -48,6 +48,18 @@ def parse_args():
         default=-1,
         help="Subset size of training data (-1=all)",
     )
+    parser.add_argument(
+        "--opt",
+        type=str,
+        default="SGD",
+        help="optimizer to use (Adam or SGD)",
+    )
+    parser.add_argument(
+        "--activ",
+        type=str,
+        default="ReLU",
+        help="Activation function to use",
+    )
 
     return parser.parse_args()
 
@@ -227,12 +239,12 @@ def main():
             args.dataset, args.valid_split, args.sample_size
         )
 
-        layer_sizes = [input, 2048, 1024, 512, 256, 128, output]
+        layer_sizes = [input, 4096, 2048, 1024, 512, 128, output]
         model = NeuralNetwork(
             layer_sizes=layer_sizes,
-            activation="LeakyReLU",
+            activation=args.activ,
         )
-        optimizer = use_optimizer(model.parameters(), type="Adam", lr=args.lr)
+        optimizer = use_optimizer(model.parameters(), type=args.opt, lr=args.lr)
 
         history = train_and_evaluate(
             args, model, optimizer, X_train, y_train, X_test, y_test

@@ -25,16 +25,16 @@ def parse_args():
         help="Max features to consider at each split",
     )
     parser.add_argument(
-        "--njobs",
-        type=int,
-        default=8,
-        help="Max features to consider at each split",
-    )
-    parser.add_argument(
         "--min-samp-leaf",
         type=int,
         default=2,
         help="Minimum samples per leaf",
+    )
+    parser.add_argument(
+        "--njobs",
+        type=int,
+        default=8,
+        help="Number of jobs to run in parallel. Affects speed, not accuracy.",
     )
 
     return parser.parse_args()
@@ -65,7 +65,7 @@ def main():
         max_features=args.max_feat,
         min_samples_leaf=args.min_samp_leaf,
         n_jobs=args.njobs,
-        random_state=42
+        random_state=42,
     )
 
     print("Building Forest")

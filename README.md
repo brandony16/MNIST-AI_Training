@@ -40,16 +40,64 @@ After training, the models performance is visualized using matplotlib. Four grap
 - Convolutional Neural Network
 
 ## KNN
-- This model plots training data in space.
-- When predicting on test data, it finds the closest K "neighbors" to it and 
-performs a majority vote among those points to determine what to classify the new point as.
+This model plots training data in space. When predicting on test data, it finds the closest K "neighbors" to it and performs a majority vote among those points to determine what to classify the new point as. Click [here](https://en.wikipedia.org/wiki/K-nearest_neighbors_algorithm) for more info.
 
 To run the KNN script:
 ```bash
-python KNN/KNNMain.py {K}
+python KNN/KNNMain.py
 ```
-Where K is the number of neighbors (default: 3)
+This program has arguments for --dataset, --valid-split, --k, and --num-dims.
+More info can be found by running:
+```bash
+python KNN/KNNMain.py --help
+```
+or looking at the KNNMain file.
 
-Using KNN, I was able to achieve a accuracy of 97.72% on MNIST and XX.XX% on CIFAR-10
-IMAGE OF CONFUSION MATRIX AND BAR CHARTS
+Using a KNN classifier, I was able to achieve a accuracy of 97.72% on MNIST and 39.39% on CIFAR-10.
+![Confusion Matrix and Precision/Recall/F1 score bar chart for KNN model trained on MNIST](./screenshots/MNIST/KNN3(97.72).png)
+*Confusion matrix and Precision/Recall/F1 score bar chart after training on MNIST with k=3 and num_dims=50.*
 
+![Confusion Matrix and Precision/Recall/F1 score bar chart for KNN on CIFAR](./screenshots/CIFAR/KNN13(39.39).png)
+*Confusion matrix and Precision/Recall/F1 score bar chart after training on CIFAR with k=13 and num_dims=50.*
+
+## Random Forest
+This model creates many decision trees, each trained on different subsets of the data and features. By combining the outputs of many diverse trees, accuracy is improved and overfitting is reduced. Click [Here](https://en.wikipedia.org/wiki/Random_forest) to learn more.
+
+To run the RandomForest script:
+```bash
+python ./RandomForest/RFMain.py
+```
+This program has arguments for --dataset, --valid-split, --trees, --max-depth, --max-feat, --njobs, and --min-samp-leaf.
+More info can be found by running:
+```bash
+python ./RandomForest/RFMain.py --help
+```
+or looking at the RFMain file.
+
+Using a Random Forest classifier, I was able to achieve a accuracy of 96.72% on MNIST and 46.78% on CIFAR-10.
+![Confusion Matrix and Precision/Recall/F1 score bar chart for RF model trained on MNIST](./screenshots/MNIST/RF100(maxd25,maxf28,msl1)(96.72).png)
+*Confusion matrix and Precision/Recall/F1 score bar chart after training on MNIST trees=100, max-depth=25, max-feat=28, min-samp-leaf=1.*
+
+![Confusion Matrix and Precision/Recall/F1 score bar chart for KNN on CIFAR](./screenshots/CIFAR/RF300(maxd=25maxf=64)(46.78).png)
+*Confusion matrix and Precision/Recall/F1 score bar chart after training on CIFAR with with trees=300, max-depth=25, max-feat=64, min-samp-leaf=2.*
+
+## Neural Network
+This model uses layers of connected nodes to classify input data. Unlike previous models, this one "learns" over many passes of the training data, called epochs. Click [Here](https://en.wikipedia.org/wiki/Neural_network_(machine_learning)) to learn more.
+
+To run the Neural Network script:
+```bash
+python ./NeuralNetwork/NNMain.py
+```
+This program has arguments for --dataset, --valid-split, --batch-size, --epochs, --lr, --lr-drop-every, --lr-drop-factor, --sample-size, --opt, and --activ.
+More info can be found by running:
+```bash
+python ./NeuralNetwork/NNMain.py --help
+```
+or looking at the RFMain file.
+
+Using a Neural Network, I was able to achieve a accuracy of 99.00% on MNIST and 46.78% on CIFAR-10.
+![Charts for Neural Network trained on MNIST](./screenshots/MNIST/NN(99.00)(1024,%20512,%20256,%20128)(0.001lr%20adam%200.2drop).png)
+*Performance Charts after training on MNIST with layer sizes [2048, 1024, 512, 256, 128], lr=0.001, opt=adam.*
+
+![Charts for Neural Network trained on CIFAR](./screenshots/CIFAR/RF300(maxd=25maxf=64)(46.78).png)
+*Performance Charts after training on MNIST with layer sizes [2048, 1024, 512, 256, 128], lr=0.001, opt=adam*
