@@ -62,30 +62,54 @@ class Sequential:
                 params.append((layer.beta, layer.dbeta))
         return params
 
-    def predict(self, x, batch_size=1024):
+    def predict(self, x, y, batch_size=1024):
         """Run forward through all but the loss layer, then take argmax."""
-        out = cp.asarray(x)
-        N = out.shape[0]
+        N = x.shape[0]
         all_preds = []
+        total_loss = 0.0
+        total_count = 0
+
         for i in range(0, N, batch_size):
-            batch_pred = out[i : i + batch_size]
+            xb = cp.asarray(x[i : i + batch_size])
+            yb = cp.asarray(y[i : i + batch_size])
+
+            out = xb
+            # forward through all but loss layer
             for layer in self.layers:
                 name = layer.__class__.__name__
-                # skip the loss layer
                 if name == "SoftmaxCrossEntropy":
                     break
-                if name == "BatchNorm2D" or name == "Dropout":
-                    batch_pred = layer.forward(batch_pred, training=False)
+                if name in ("BatchNorm2D", "Dropout"):
+                    out = layer.forward(out, training=False)
                 else:
-                    batch_pred = layer.forward(batch_pred)
+                    out = layer.forward(out)
 
-            preds = cp.argmax(batch_pred, axis=1)
-            all_preds.append(preds)
+            # out now contains logits for this batch
+            # 1) compute batch predictions
+            batch_preds = cp.argmax(out, axis=1)
+            all_preds.append(batch_preds)
 
-        return cp.concatenate(all_preds, axis=0)
+            # 2) compute batch loss via the final layer
+            #    we assume the last layer is SoftmaxCrossEntropy
+            loss_layer = next(
+                l for l in self.layers if l.__class__.__name__ == "SoftmaxCrossEntropy"
+            )
+            batch_loss = loss_layer.forward(out, yb)  # returns scalar loss
+            total_loss += float(batch_loss) * xb.shape[0]
+            total_count += xb.shape[0]
+
+        preds = cp.concatenate(all_preds, axis=0)
+        avg_loss = total_loss / total_count
+        return preds, avg_loss
 
     def train(
-        self, optimizer, train_data, train_labels, batch_size=64, augment_fn=None
+        self,
+        optimizer,
+        train_data,
+        train_labels,
+        batch_size=64,
+        augment_fn=None,
+        scheduler=None,
     ):
         """Trains the model for one epoch on the given training data"""
         self.train_mode()
@@ -111,38 +135,4 @@ class Sequential:
 
             optimizer.step()
 
-    def save(self, path):
-        params = {}
-        for i, layer in enumerate(self.layers):
-            if hasattr(layer, "weights"):
-                params[f"layer{i}_W"] = layer.weights.get()
-            if hasattr(layer, "bias"):
-                params[f"layer{i}_B"] = layer.bias.get()
-
-        np.savez_compressed(path, **params)
-
-    @classmethod
-    def load(cls, path, *layer_constructors):
-        """
-        Reconstruct a Sequential model from the given layer constructors
-        and load weights from `path + ".npz"`.
-
-        `layer_constructors` should be the exact same list you passed to __init__,
-        _not_ instances but callables, e.g.:
-            Conv2D, ReLU, MaxPool2D, ..., Dense, SoftmaxCrossEntropy
-        """
-        # 1) Build fresh layers
-        layers = [ctor() for ctor in layer_constructors]
-        model = cls(layers)
-
-        # 2) Load saved params
-        data = np.load(path + ".npz")
-        for idx, layer in enumerate(model.layers):
-            w_key = f"layer{idx}_W"
-            b_key = f"layer{idx}_B"
-            if w_key in data and b_key in data:
-                # assign back to GPU arrays
-                layer.weights[:] = cp.asarray(data[w_key])
-                layer.bias[:] = cp.asarray(data[b_key])
-        print(f"[Loaded] weights from {path}.npz")
-        return model
+            scheduler.step()

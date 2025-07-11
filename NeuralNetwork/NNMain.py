@@ -239,7 +239,7 @@ def main():
             args.dataset, args.valid_split, args.sample_size
         )
 
-        layer_sizes = [input, 4096, 2048, 1024, 512, 128, output]
+        layer_sizes = [input, 2048, 1024, 1024, 512, 128, output]
         model = NeuralNetwork(
             layer_sizes=layer_sizes,
             activation=args.activ,
