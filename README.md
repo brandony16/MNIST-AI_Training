@@ -4,6 +4,7 @@ A project to familiarize myself with different forms of machine learning and AI,
 Also practiced using data visualization libraries like matplotlib to gain a deeper understanding of the models and how they progressed over time.
 
 ## Table of Contents
+- [Getting Started](#getting-started)
 - [Datasets](#datasets)
 - [Data Preparation](#data-preparation)
 - [Data Visualization](#data-visualization)
@@ -13,6 +14,23 @@ Also practiced using data visualization libraries like matplotlib to gain a deep
 - [Multilayer Perceptron / Neural Network](#multilayer-perceptron--neural-network)
 - [Convolutional Neural Network](#convolutional-neural-network-cnn)
 
+### Getting Started
+
+To clone this repository, run the following command in your terminal:
+
+```bash
+git clone https://github.com/brandony16/MNIST-AI_Training
+```
+
+Install dependencies:
+```bash
+pip install -r requirements.txt
+```
+
+(Optional) Install in editable mode:
+```bash
+pip install -e .
+``` 
 
 ## Datasets
 For this project, I trained my models on the MNIST and CIFAR-10 datasets. MNIST is a simple dataset that most classification models can perform well on. As such, all models achieved an accuracy over 96% on MNIST. Due to the accuracies being very high and the dataset not being very challenging, it can be difficult to compare models. 
