@@ -22,7 +22,7 @@ def use_optimizer(parameters, type="Adam", lr=0.001):
 
 
 class SGD:
-    def __init__(self, parameters, lr=0.1, momentum=0.9, decay=1e-4):
+    def __init__(self, parameters, lr=0.1, momentum=0.85, decay=5e-4):
         """
         parameters: list of (param, grad) tuples, where
                          - param is a cupy.ndarray of weights/biases
@@ -59,7 +59,7 @@ class SGD:
 
 class Adam:
     def __init__(
-        self, parameters, learningRate=0.001, beta1=0.9, beta2=0.999, epsilon=1e-8
+        self, parameters, learningRate=0.001, beta1=0.9, beta2=0.99, epsilon=1e-8
     ):
         """
         parameters: list of (param, grad) tuples, where

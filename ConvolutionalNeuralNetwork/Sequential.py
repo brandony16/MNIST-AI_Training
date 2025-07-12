@@ -133,6 +133,43 @@ class Sequential:
 
             self.backward()
 
+            self.clip_gradients(max_norm=2.0)
+
             optimizer.step()
 
-            scheduler.step()
+            if scheduler is not None:
+                scheduler.step()
+
+    def clip_gradients(self, max_norm):
+        all_grads = []
+
+        for layer in self.layers:
+            # Standard weights and biases
+            if hasattr(layer, "dW"):
+                all_grads.append(layer.dW.ravel())
+            if hasattr(layer, "db"):
+                all_grads.append(layer.db.ravel())
+
+            # BatchNorm parameters
+            if hasattr(layer, "dgamma"):
+                all_grads.append(layer.dgamma.ravel())
+            if hasattr(layer, "dbeta"):
+                all_grads.append(layer.dbeta.ravel())
+
+        if not all_grads:
+            return
+
+        flat_grads = np.concatenate(all_grads)
+        total_norm = np.linalg.norm(flat_grads)
+
+        if total_norm > max_norm:
+            scale = max_norm / (total_norm + 1e-6)
+            for layer in self.layers:
+                if hasattr(layer, "dW"):
+                    layer.dW *= scale
+                if hasattr(layer, "db"):
+                    layer.db *= scale
+                if hasattr(layer, "dgamma"):
+                    layer.dgamma *= scale
+                if hasattr(layer, "dbeta"):
+                    layer.dbeta *= scale

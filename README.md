@@ -149,11 +149,12 @@ or looking at the CNNMain file.
 The CNN uses many of the optimizations from the [Neural Network](#optimizations-2) section, with a few more added. Batch Norm serves the same purpose but is now done in 2D instead of 1D. 
 - **Pooling:** This layer reduces the dimensionality after convolution blocks. This helps reduce model size and make the model less sensitive to noise in the data.
 - **LR Scheduler:** This is an function that adapts the learning rate over time for maximum performance. It an implementation of [OneCycleLR](https://docs.pytorch.org/docs/stable/generated/torch.optim.lr_scheduler.OneCycleLR.html), which build the learning rate up in a warm up phase, then tapers it off over time using cosine annealing. 
+- **Weight Clipping:** When training on CIFAR, I was gettting very unstable results, with loss jumping up and down. Because of this, I implemented weight clipping, which prevents weights from blowing up and helps stabilize training.
 
 ### Results
-Using a CNN, I was able to achieve a accuracy of 99.36% on MNIST and 45.25% on CIFAR-10.
+Using a CNN, I was able to achieve a accuracy of 99.36% on MNIST and 56.94% on CIFAR-10. The result on MNIST is good, but the result on CIFAR is lower than expected. I found training on CIFAR to be very unstable, and despite tweaking and testing with many architectures, I could not get a high accuracy. A CNN should be able to reach 70-80% fairly easily. Regardless, the result of 56.94% is still 10% higher than any other model was able to achieve, showing the CNN's strengths.
 ![Charts for CNN trained on MNIST](./screenshots/MNIST/CNN(99.36)(epochs=20,lr=0.1,batch=64,opt=sgd).png)
 *Performance Charts after training on MNIST with lr=0.1, opt=sgd, epochs=20, batch-size=64.*
 
-![Charts for Neural Network trained on CIFAR](./screenshots/CIFAR/NN(45.25)(layers=[2048,1024,1024,512,128],epochs=50,batch=64,lr=0.1,opt=sgd,activ=leakyRelu).png)
-*Performance Charts after training on CIFAR for 50 epochs with layer sizes [2048, 1024, 512, 256, 128], lr=0.1, opt=sgd*
+![Charts for Neural Network trained on CIFAR](./screenshots/CIFAR/CNN(56.94).png)
+*Performance Charts after training on CIFAR for 50 epochs with lr=0.1, opt=sgd, batch-size=256, epochs=50*

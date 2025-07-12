@@ -8,7 +8,7 @@ class OneCycleScheduler:
         max_lr: float,
         total_steps: int,
         pct_start: float = 0.3,
-        div_factor: float = 25.0,
+        div_factor: float = 50.0,
         final_div_factor: float = 1e4,
     ):
         """
@@ -27,6 +27,7 @@ class OneCycleScheduler:
 
         self.initial_lr = max_lr / div_factor
         self.final_lr = self.initial_lr / final_div_factor
+        self.curr_lr = self.initial_lr # for debugging purposes
 
         # compute step counts
         self.step_num = 0
@@ -48,5 +49,7 @@ class OneCycleScheduler:
             pct = (self.step_num - self.up_steps) / max(1, self.down_steps)
             cos_out = 0.5 * (1 + math.cos(math.pi * pct))
             lr = self.final_lr + cos_out * (self.max_lr - self.final_lr)
+
+        self.curr_lr = lr
 
         self.optimizer.set_lr(lr)

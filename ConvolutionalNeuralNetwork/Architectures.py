@@ -43,35 +43,35 @@ CIFAR_PARAMETERS = [
     # # --- Block 1: 3×3 conv ×2, 32 filters ---
     lambda: Conv2D(3, 32, kernel_size=3, padding=1),
     lambda: BatchNorm2D(32),
-    LeakyReLU,
+    ReLU,
     lambda: Conv2D(32, 32, kernel_size=3, padding=1),
     lambda: BatchNorm2D(32),
-    LeakyReLU,
+    ReLU,
     lambda: MaxPool2D(pool_size=2, stride=2),  # 32×16×16
     # # # --- Block 2: 3×3 conv ×2, 64 filters ---
     lambda: Conv2D(32, 64, kernel_size=3, padding=1),
     lambda: BatchNorm2D(64),
-    LeakyReLU,
+    ReLU,
     lambda: Conv2D(64, 64, kernel_size=3, padding=1),
     lambda: BatchNorm2D(64),
-    LeakyReLU,
+    ReLU,
     lambda: MaxPool2D(pool_size=2, stride=2),  # 64×8×8
     # # # --- Block 3: 3×3 conv ×2, 128 filters ---
     lambda: Conv2D(64, 128, kernel_size=3, padding=1),
     lambda: BatchNorm2D(128),
-    LeakyReLU,
+    ReLU,
     lambda: Conv2D(128, 128, kernel_size=3, padding=1),
     lambda: BatchNorm2D(128),
-    LeakyReLU,
+    ReLU,
     lambda: MaxPool2D(pool_size=2, stride=2),  # 128×4×4
     lambda: AvgPool2D(pool_size=4, stride=4),  # 128×1×1
     Flatten,  # 128
     # --- Classifier head ---
     lambda: Dense(128, 256),
-    LeakyReLU,
+    ReLU,
     lambda: Dropout(0.2),
     lambda: Dense(256, 128),
-    LeakyReLU,
+    ReLU,
     lambda: Dropout(0.2),
     lambda: Dense(128, 10),
     SoftmaxCrossEntropy,

@@ -84,7 +84,7 @@ def augment_batch(
 
     if C > 1:
         mask = cp.random.rand(N) < flip_prob
-        X_aug[mask] = X_aug[mask, :, :, ::-1]
+        X_aug[mask] = X_aug[mask, :, :, ::-1]  # Flip width wise
 
     return X_aug
 
@@ -145,7 +145,9 @@ def compute_metrics(model, X, y_onehot, batch_size=1024):
     return loss, acc, labels, preds
 
 
-def train_and_evaluate(args, model, optimizer, X_train, y_train, X_test, y_test):
+def train_and_evaluate(
+    args, model: Sequential, optimizer, X_train, y_train, X_test, y_test
+):
     """
     Trains a model and stores performance metrics on test and train loss and accuracy.
 
@@ -161,7 +163,7 @@ def train_and_evaluate(args, model, optimizer, X_train, y_train, X_test, y_test)
         optimizer,
         max_lr=args.lr,
         total_steps=total_steps,
-        pct_start=0.3,
+        pct_start=0.02,
         div_factor=25.0,
         final_div_factor=1e4,
     )
@@ -179,8 +181,15 @@ def train_and_evaluate(args, model, optimizer, X_train, y_train, X_test, y_test)
             )
 
         model.eval()
-        train_loss, train_acc, _, _ = compute_metrics(model, X_train, y_train)
-        test_loss, test_acc, _, _ = compute_metrics(model, X_test, y_test)
+        # Random subset of 5000 for each to speed up evaluation.
+        test_idxs = np.random.choice(len(X_test), size=5000, replace=False)
+        train_idxs = np.random.choice(len(X_train), size=5000, replace=False)
+        train_loss, train_acc, _, _ = compute_metrics(
+            model, X_train[train_idxs], y_train[train_idxs]
+        )
+        test_loss, test_acc, _, _ = compute_metrics(
+            model, X_test[test_idxs], y_test[test_idxs]
+        )
 
         history.append(
             {
